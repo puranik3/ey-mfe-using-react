@@ -1,8 +1,12 @@
 // import React from 'react';
+import HomeApp from './components/HomeApp';
+import { Container } from 'react-bootstrap';
 
 const App = () => {
     return (
-        <div>Container App component</div>
+        <Container className="my-4">
+            <HomeApp />
+        </Container>
     );
 };
 
