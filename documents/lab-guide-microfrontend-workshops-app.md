@@ -47,9 +47,8 @@ npm i react react-dom react-router-dom bootstrap react-bootstrap axios
     - container : 3000
     - home : 3001
     - workshops : 3002
-    - sessions : 3003
+    - shared : 3003
     - auth : 3004
-    - shared : 3005
 
 -   `webpack.common.js`
 
@@ -149,12 +148,12 @@ module.exports = merge(commonConfig, devConfig);
     -   shared : root-shared
 
 ## Step 5: Set up the container app's other basic files
-- Add `index.js`, `bootstrap.js` and `App.js` in __container__ app
-- In `index.js`
+- Add `src/index.js`, `src/bootstrap.js` and `src/App.js` in __container__ app
+- In `src/index.js`
 ```
 import('./bootstrap');
 ```
-- In `bootstrap.js`
+- In `src/bootstrap.js`
 ```jsx
 import { createRoot } from 'react-dom/client';
 
@@ -170,7 +169,7 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(<App />);
 ```
-- In `App.js`
+- In `src/App.js`
 ```jsx
 const App = () => {
   return (
@@ -195,8 +194,8 @@ npm start
 - Open container app in the browser - `http://localhost:3000`
 
 ## Step 7: Set up Home component
-- In the home app, set up `components/Home/Home.js` and a `mount()` function that takes care of rendering and is called immediately in standalone mode, and is exported for use in the container.
-- In home app `components/Home/Home.js`
+- In the home app, set up `src/components/Home/Home.js` and a `mount()` function that takes care of rendering and is called immediately in standalone mode, and is exported for use in the container.
+- In home app `src/components/Home/Home.js`
 ```jsx
 const Home = () => {
     return (
@@ -225,7 +224,7 @@ const Home = () => {
 
 export default Home;
 ```
-- In home app `App.js`
+- In home app `src/App.js`
 ```jsx
 import Home from './components/Home/Home';
 
@@ -237,7 +236,7 @@ const App = () => {
 
 export default App;
 ```
-- In home app `bootstrap.js`
+- In home app `src/bootstrap.js`
 ```jsx
 import { createRoot } from 'react-dom/client';
 
@@ -293,7 +292,7 @@ plugins: [
     }),
 ],
 ```
-- In container's `webpack.config.js`
+- In container's `webpack.dev.js`
 ```js
 const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
 const packageJson = require('../package.json');
@@ -309,7 +308,7 @@ plugins: [
     }),
 ],
 ```
-- In the container app, create `components/HomeApp.js`. Render a container element to show the home app, call `mount()` and pass this element as the mount point.
+- In the container app, create `src/components/HomeApp.js`. Render a container element to show the home app, call `mount()` and pass this element as the mount point.
 ```jsx
 import { mount } from 'home/HomeApp';
 import { useRef, useEffect } from 'react';
@@ -324,7 +323,7 @@ export default () => {
   return <div ref={ref} />;
 };
 ```
-- In container app's `App.js`
+- In container app's `src/App.js`
 ```jsx
 import { Container } from 'react-bootstrap';
 import HomeApp from './components/HomeApp';
@@ -342,7 +341,7 @@ export default App;
 - Restart the container app and home app (__do so whenever any configuration file like webpack config file changes are made__). Make sure the home app is also running. You should be able to see the Home app on `http://localhost:3000`
 
 ## Step 9: Add an app-wide menu
-- In container app add `components/Menu/Menu.js`
+- In container app add `src/components/Menu/Menu.js`
 ```jsx
 import { NavLink } from 'react-router-dom';
 import Container from 'react-bootstrap/Container';
@@ -382,11 +381,9 @@ const Menu = () => {
 
 export default Menu;
 ```
-- Include it in the container `App.js`. Also set up Routing using browser history.
+- Include it in the container `src/App.js`. Also set up Routing using browser history.
 ```jsx
 import { Container } from 'react-bootstrap';
-// import { unstable_HistoryRouter as HistoryRouter } from 'react-router-dom';
-// import { createBrowserHistory } from 'history';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import Menu from './components/Menu/Menu';
@@ -413,13 +410,13 @@ export default App;
 ```
 
 ## Step 10: Scoping CSS styles to MFEe
-- Let us try adding a simple style in home app's `components/Home/Home.scss`
+- Let us try adding a simple style in home app's `src/components/Home/Home.scss`
 ```scss
 h1 {
     color: crimson;
 }
 ```
-- Include it in home app's `components/Home/Home.js`
+- Include it in home app's `src/components/Home/Home.js`
 ```jsx
 import './Home.scss';
 
@@ -427,7 +424,7 @@ const Home = () => {
     // code...
 }
 ```
-- The styles reflect on the page in both container and home apps. However, the styles from the home app leak on to the container app - to test this add a heading in the container app. In container app's `App.js`
+- The styles reflect on the page in both container and home apps. However, the styles from the home app leak on to the container app - to test this add a heading in the container app. In container app's `src/App.js`
 ```jsx
 <Container className="my-4">
     <h1>A heading in container app</h1>
@@ -448,7 +445,7 @@ const Home = () => {
     }
 }
 ```
-- Scope the home component using the home class in home app's `components/Home/Home.js`
+- Scope the home component using the home class in home app's `src/components/Home/Home.js`
 ```jsx
 const Home = () => {
     return (
@@ -461,43 +458,77 @@ const Home = () => {
 - The problem is solved
 
 ### Approach 2 (Ignore) - Module CSS / SCSS (__Not working as of now - ignore__)
-- Modify the style-related module loaders configuration (`module.rules`) in `webpack.common.js` to so (in all apps)
+- Modify the style-related module loaders configuration `webpack.common.js` to so (in all apps)
 ```js
-{
-    test: /\.s?css$/,
-    exclude: /\.module\.s?css$/,
-    use: ['style-loader', 'css-loader', 'sass-loader']
-},
-{
-    test: /\.module\.s?css$/,
-    use: [
-        'style-loader',
+module: {
+    rules: [
         {
-            loader: 'css-loader',
-            options: {
-                modules: {
-                    localIdentName: '[name]__[local]___[hash:base64:5]',
+            test: /\.m?js$/,
+            exclude: /node_modules/,
+            use: {
+                loader: "babel-loader",
+                options: {
+                    presets: [
+                        [
+                            "@babel/preset-react",
+                            { "runtime": "automatic" }
+                        ],
+                        "@babel/preset-env"
+                    ],
+                    plugins: ["@babel/plugin-transform-runtime"],
                 },
             },
         },
-        'sass-loader',
+        {
+            test: /\.module\.s?css$/,
+            use: [
+                'style-loader',
+                {
+                    loader: 'css-loader',
+                    options: {
+                        modules: {
+                            localIdentName: '[name]__[local]--[hash:base64:5]', // This helps with debugging
+                            exportLocalsConvention: 'camelCase',
+                            namedExport: false
+                        },
+                        importLoaders: 1
+                    }
+                },
+                'sass-loader',
+            ],
+        },
+        {
+            test: /\.s?css$/,
+            exclude: /\.module\.s?css$/,
+            use: ['style-loader', 'css-loader', 'sass-loader']
+        },
     ],
 },
 ```
-- Define the style instead in home app's `components/Home/Home.module.scss`. When using Module CSS / SCSS, the styles are defined using class selector. The class names are transformed to include random characters during the build (CSS loader processes them), making them unique to the MFE defining them. Thus the a CSS class defined in one app does not affect another that defines a CSS class with the SAME name.
+- __NOTE__: If needed you can even prefix the MFE app's name in class names that are generated
+```js
+localIdentName: 'container__[name]__[local]--[hash:base64:5]', // container app classes prefixed with container
+```
+```js
+localIdentName: 'home__[name]__[local]--[hash:base64:5]', // home app classes prefixed with home
+```
+
+- Define the style instead in home app's `src/components/Home/Home.module.scss`. When using Module CSS / SCSS, the styles are defined using class selector. The class names are transformed to include random characters during the build (CSS loader processes them), making them unique to the MFE defining them. Thus the a CSS class defined in one app does not affect another that defines a CSS class with the SAME name.
 ```scss
 .heading {
     color: crimson;
 }
 ```
-- In home app's `components/Home/Home.js`
+- In home app's `src/components/Home/Home.js`
 ```jsx
-import classes from './Home.module.scss';
+import styles from './Home.module.scss';
+
+console.log( styles );
 
 const Home = () => {
     return (
         <div>
-            <h1 className={classes.heading}>Workshops App</h1>
+            <h1 className={styles.heading}>Workshops App</h1>
 
             {/* UI code... */}
         </div>
@@ -507,10 +538,10 @@ const Home = () => {
 export default Home;
 ```
 - Now even if we define a class with the name `heading` in the container app, it won't affect elements with that class in the container (i.e. those components whose UI is defined by the container).
-- __NOTE__: This approach is throwing an error at runtime. SCSS Modules not working in a microfrontend setup using Webpack Module Federation is a known, common issue, especially when remote apps don’t have SCSS or CSS Module support fully configured or exposed correctly (__work in progress__)
+
 
 ## Step 11: Add workshops list component
-- __EXERCISE__: In workshops app, set up `index.js`, `bootstrap.js`, `App.js`. In App component import and render `WorkshopsList` from `src/components/workshops/WorkshopsList/WorkshopsList` (we create this next). Make sure the webpack config is simlar to home app (includes loaders for processing CSS etc.)
+- __EXERCISE__: In workshops app, set up `src/index.js`, `src/bootstrap.js`, `src/App.js`. In App component import and render `WorkshopsList` from `src/components/workshops/WorkshopsList/WorkshopsList` (we create this next). Make sure the webpack config is simlar to home app (includes loaders for processing CSS etc.)
 - In workshops app add `src/services/workshops.js`
 ```js
 import axios from 'axios';
@@ -534,7 +565,7 @@ export {
     getWorkshopById
 }
 ```
-- In workshops app, add `components/workshops/WorkshopsList.js`
+- In workshops app, add `src/components/workshops/WorkshopsList/WorkshopsList.js`
 ```jsx
 // sfc
 import { useEffect, useState } from 'react';
@@ -615,7 +646,7 @@ const WorkshopsList = () => {
 
 export default WorkshopsList;
 ```
-- In workshops app, add `components/workshops/WorkshopsList/Item/Item.js`
+- In workshops app, add `src/components/workshops/WorkshopsList/Item/Item.js`
 ```jsx
 import { Card, Button } from "react-bootstrap";
 
@@ -647,7 +678,7 @@ const Item = ({  imageUrl, id, name, location, startDate, endDate }) => {
 
 export default Item;
 ```
-- In workshops app, add `components/workshops/WorkshopsList/Item/Item.scss`
+- In workshops app, add `src/components/workshops/WorkshopsList/Item/Item.scss`
 ```scss
 .workshops {
     .card-img-top-wrapper {
@@ -671,7 +702,7 @@ export default Item;
     }
 }
 ```
-- In workshops app's `App.js`, render the WorkshopsList component, and enable scoped CSS by adding the workshops CSS class defined above.
+- In workshops app's `src/App.js`, render the WorkshopsList component, and enable scoped CSS by adding the workshops CSS class defined above.
 ```jsx
 import WorkshopsList from './components/workshops/WorkshopsList/WorkshopsList';
 
@@ -686,7 +717,7 @@ const App = () => {
 export default App;
 ```
 - You should now be able to see the workshops list on `http://localhost:3002`
-- Expose `bootstrap.js` to other MFEs, and mount WorkshopsApp in the container app. This is left as an exercise.
+- Expose `src/bootstrap.js` to other MFEs, and mount WorkshopsApp in the container app. This is left as an exercise.
 
 ## Step 12: Expose WorkshopsList React component and consume it in container app
 - Expose it. Add this in workshops app `config/webpack.dev.js`
@@ -730,7 +761,7 @@ export default () => {
     return <div ref={ref} />;
 };
 ```
-- Show it by making this change in container app's `App.js`
+- Show it by making this change in container app's `src/App.js`
 ```jsx
 import { Container } from 'react-bootstrap';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
@@ -748,7 +779,7 @@ const App = () => {
                     <h1>A heading in container app</h1>
                     <Routes>
                         <Route path="/" element={<HomeApp />} />
-                        <Route path="/workshops" element={<WorkshopsApp />} />
+                        <Route path="/workshops/*" element={<WorkshopsApp />} />
                     </Routes>
                 </Container>
             </BrowserRouter>
@@ -761,7 +792,7 @@ export default App;
 - Make sure to restart the workshops and container apps. You should be able to see workshops list on `http://localhost:3000/workshops`
 
 ## Step 13: Create and expose common React components from the container app
-- __EXERCISE__: We create common components used across MFEs in the container app, and expose it to other MFEs. This can also be done in a separate shared MFE (say, __shared__). Set this MFE up. It should launch on port __3005__.
+- __EXERCISE__: We create common components used across MFEs in the container app, and expose it to other MFEs. This can also be done in a separate shared MFE (say, __shared__). Set this MFE up. It should launch on port __3003__.
 - In the shared app, install `date-fns`
 ```
 npm i date-fns
@@ -833,7 +864,7 @@ import LoadingSpinner from './LoadingSpinner/LoadingSpinner';
 export { ErrorAlert, FormattedDate, LoadingSpinner };
 ```
 - __EXERCISE__: In the App component of this shared MFE, we can render example(s) of thes components we created above. this is left as an exercise.
-- __EXERCISE SOLUTION__: In shared app's `App.js`
+- __EXERCISE SOLUTION__: In shared app's `src/App.js`
 ```js
 import { ErrorAlert, FormattedDate, LoadingSpinner } from './components';
 
@@ -868,7 +899,7 @@ plugins: [
         name: 'workshops',
         filename: 'remoteEntry.js',
         remotes: {
-            shared: 'shared@http://localhost:3005/remoteEntry.js',
+            shared: 'shared@http://localhost:3003/remoteEntry.js',
         },
         exposes: {
             './WorkshopsApp': './src/bootstrap',
@@ -922,7 +953,7 @@ import { FormattedDate } from "shared/components";
     <FormattedDate date={endDate} />
 </div>
 ```
-- Make sure to restart the shared, workshops apps. You can view the shared MFE at `http://localhost:3005` and the updates on workshops (`http://localhost:3002`) and container (`http://localhost:3000`)
+- Make sure to restart the shared, workshops apps. You can view the shared MFE at `http://localhost:3003` and the updates on workshops (`http://localhost:3002`) and container (`http://localhost:3000`)
 - __NOTE__: Unlike items exposed so far, the shared MFE exports actual React components (rather than something like a mount() function that needs to be called to render the UI). This makes the module less portable (eg. you decide to move to Vue / Angular). You will need to come up with an approach similar the way `mount()` function was exposed, in order to have functions that can be called to render the shared components in general (to make it usable from an Vue / Angular app for example).
 
 ## Step 14: Set up details page
@@ -938,8 +969,6 @@ import { faCheckCircle, faTimesCircle } from "@fortawesome/free-regular-svg-icon
 import { ErrorAlert, FormattedDate, LoadingSpinner } from "shared/components/ErrorAlert";
 
 import { getWorkshopById } from '../../../services/workshops';
-
-import "./WorkshopDetails.scss";
 
 const WorkshopDetails = () => {
     const id = 1;
@@ -1026,19 +1055,7 @@ const WorkshopDetails = () => {
 
 export default WorkshopDetails;
 ```
-- Add its styles in the same folder in `WorkshopDetails.scss`
-```scss
-.workshops {
-    .btn-child-link {
-        opacity: 0.5;
-    }
-
-    .btn-active {
-        opacity: 1;
-    }
-}
-```
-- Test the details page by showing it in place of the `WorkshopsList` component in the workshop app's `App.js`
+- Test the details page by showing it in place of the `WorkshopsList` component in the workshop app's `src/App.js`
 ```js
 import WorkshopDetails from './components/workshops/WorkshopDetails/WorkshopDetails';
 import WorkshopsList from './components/workshops/WorkshopsList/WorkshopsList';
@@ -1065,9 +1082,1047 @@ export default App;
     - Links within the child MFEs using memory router don't affect the window location.
     - We would need a communication mechanism to sync up these remote MFE click events with the container app's browser router, so that the location can be updated.
     - We will see these in this step.
+- __NOTE__: If you use BrowserRouter for both host container MFE and remote MFEs, you will end up having links in the host MFE, that when clicked may not update remote MFE UI (especially if you viewing a page in the remote MFE, and click a link in the host MFE that links to another page in the same remote MFE). Issues would also arise when you click links in the remote MFE UI. Problems arise when there are child routes in the remote MFEs.
 
 ### In Practice
-- First set up routing using memory router in workshops app. In workshops app's `App.js`
-```js
+- __NOTES__
+    - First set up routing using browser router for standalone mode, and memory router for use in the host container app, in workshops app.
+    - When the workshops app mounts, it must also have the current url (window.location) set as initial path in the memory router using `initialEntries` option.
+    - To sync the changes in the memory router (i.e. workshops app `Link`s that change memory router state) with the host app browser router state, we pass an `onNavigate` function from host app to the remote app (workshops app in our case).
+        - We set `onNavigate` to be called on route state changes using `router.subscribe()`.
+    - To sync the changes in the browser router (i.e. host container app `Link`s that change the browser router state, and consequently `window.location`) with the remote app memory router state (workshops app in this case), we return `onParentNavigate` function from `mount()`.
+        - We set `onParentNavigate` to be called on route state changes using an effect that is triggered on pathname changes (note that we could also trigger on `search` changes but we do not have such a requirement in this app - __this is left for your exploration__).
+- We set up using data router approach of React Router v6 / v7 In workshops app's `src/bootstrap.js`. The data router requires us to define `Layout.js` file for app-wide layout. Here we do not have a common layout for WorkshopsList and WorkshopDetails pages, hence the layout simply renders an `Outlet`. In workshops app add `src/Layout.js`.
+```jsx
+// Layout.jsx
+import { Link, Outlet } from 'react-router-dom';
 
+const Layout = () => {
+    return (
+        <>
+            <div>
+                <Link to="/workshops">List of workshops</Link>
+            </div>
+            <Outlet />
+        </>
+    );
+};
+
+export default Layout;
 ```
+- Then in workshops app's `src/bootstrap.js`
+```jsx
+import { createRoot } from 'react-dom/client';
+
+import { createBrowserRouter, createMemoryRouter } from 'react-router-dom';
+
+import 'bootstrap/dist/css/bootstrap.css';
+
+import Layout from './Layout';
+import WorkshopsList from './components/workshops/WorkshopsList/WorkshopsList';
+import WorkshopDetails from './components/workshops/WorkshopDetails/WorkshopDetails';
+
+import App from './App';
+
+const routes = [
+    {
+        path: '/workshops',
+        element: <Layout />,
+        children: [
+            {
+                index: true,
+                element: <WorkshopsList />
+            },
+            {
+                path: ':id',
+                element: <WorkshopDetails />,
+            }
+        ]
+    }
+];
+
+const mount = (rootElement, defaultRouter, initialPath, onNavigate) => {
+    console.log('workshops::bootstrap::mount initialPath:', initialPath);
+
+    // We use browser history when the MFE is rendered in standalone mode, and memory router when rendered through the host container app
+    const router = defaultRouter || createMemoryRouter(
+        routes,
+        {
+            initialEntries: [initialPath],
+        }
+    );
+
+    console.log('workshops::bootstrap::router:', router);
+
+    router.subscribe(() => {
+        const location = router.state.location;
+
+        const search = location.search;
+        const pathname = location.pathname;
+
+        console.log('workshops::bootstrap::router.subscribe::search:', search);
+        console.log('workshops::bootstrap::router.subscribe::pathname:', pathname);
+
+        if (onNavigate && typeof onNavigate === 'function') {
+            console.log('workshops::bootstrap::router.subscribe::calling onNavigate');
+
+            onNavigate({
+                pathname: window.location.pathname,
+                nextPathname: pathname,
+                search
+            });
+        }
+    });
+
+    const root = createRoot(rootElement);
+
+    root.render(
+        <div className="workshops">
+            <App router={router} />
+        </div>
+    );
+
+    return function onParentNavigate({ nextPathname }) {
+        console.log('workshops::bootstrap::onParentNavigate', nextPathname);
+
+        const { pathname } = router.state.location;
+
+        if (pathname !== nextPathname) {
+            console.log('workshops::bootstrap::onParentNavigate Navigating to nextPathname:', nextPathname);
+
+            router.navigate(nextPathname/*, { replace: true }*/);
+        }
+    };
+};
+
+if (process.env.NODE_ENV === 'development') {
+    const rootElement = document.getElementById('root-workshops');
+
+    if (rootElement) {
+        console.log('workshops::bootstrap::Mounting Workshops App in isolation');
+
+        mount(rootElement, createBrowserRouter(routes));
+    }
+}
+
+export { mount };
+```
+- In workshop app's `src/App.js`
+```js
+import { RouterProvider } from 'react-router-dom';
+
+const App = ({ router }) => {
+    return (
+        <div className="workshops">
+            <RouterProvider router={router} />
+        </div>
+    );
+};
+
+export default App;
+```
+- In the container app let us migrate to the data router way of working for consistency (not a good idea to mix declarative routing with data routing approach).
+- First add in the container app, `src/Layout.js`
+```jsx
+import { Outlet } from 'react-router-dom';
+import { Container } from 'react-bootstrap';
+import Menu from './components/Menu/Menu';
+
+const Layout = () => {
+    return (
+        <>
+            <Menu />
+            <Container className="my-4">
+                <Outlet />
+            </Container>
+        </>
+    );
+};
+
+export default Layout;
+```
+- Then in the container app's `src/App.js`
+```jsx
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+
+import Layout from './Layout';
+import HomeApp from './components/HomeApp';
+import WorkshopsApp from './components/WorkshopsApp';
+
+const routes = [
+    {
+        path: '/',
+        element: <Layout />,
+        children: [
+            {
+                index: true,
+                element: <HomeApp />
+            },
+            {
+                path: 'workshops/*',
+                element: <WorkshopsApp />
+            }
+        ]
+    }
+];
+
+const router = createBrowserRouter(
+    routes
+);
+
+const App = () => {
+    return (
+        <RouterProvider router={router} />
+    );
+};
+
+export default App;
+```
+- Now in the container app's `src/components/WorkshopsApp.js`
+```jsx
+import { mount } from 'workshops/WorkshopsApp';
+import { useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+export default () => {
+    const ref = useRef(null);
+    const { pathname } = useLocation();
+    const navigate = useNavigate();
+
+    const onParentNavigateRef = useRef();
+
+    useEffect(
+        () => {
+            onParentNavigateRef.current = mount(
+                ref.current,
+                {
+                    pathname: window.location.pathname,
+                    onNavigate({ pathname, nextPathname, search }) {
+                        console.log('container::WorkshopsApp::onNavigate', pathname, nextPathname, search);
+
+                        if (pathname !== nextPathname || search !== '') {
+                            navigate({
+                                pathname: nextPathname,
+                                search
+                            });
+                        }
+                    }
+                }
+            );
+        },
+        []
+    );
+
+    useEffect(
+        () => {
+            console.log('container::WorkshopsApp::useEffect pathname', pathname);
+
+            if (onParentNavigateRef && typeof onParentNavigateRef.current === 'function') {
+                console.log('container::WorkshopsApp::useEffect Calling onParentNavigate', pathname);
+
+                onParentNavigateRef.current({
+                    nextPathname: pathname,
+                });
+            }
+        },
+        [pathname]
+    );
+
+    return <div ref={ref} />;
+};
+```
+- You should now be able to navigate between the workshop list and details pages without issues, both in the standalone workshops app, and the host container app.
+- __IMPORTANT__: Make sure to understand 100% the communication and syncing up, of state of the host container app's browser router, and the remote workshop app's memory router.
+
+## Step 16: Exercise: Implement Pagination using the following pagination component, and server-side enabled category filtering
+- __GIVEN__: Add this in shared app's `src/components/Pagination/Pagination.js`
+```jsx
+const Pagination = (
+    {
+        page,
+        disablePrevious = false,
+        disableNext = false,
+        onPrevious = () => { },
+        onNext = () => { },
+    }
+) => {
+    return (
+        <>
+            <button
+                className="btn btn-sm btn-primary me-2"
+                onClick={() => onPrevious(1)}
+                disabled={disablePrevious || page === 1}
+            >
+                Previous
+            </button>
+            <button
+                className="btn btn-sm btn-primary"
+                onClick={() => onNext(1)}
+                disabled={disableNext}
+            >
+                Next
+            </button>
+            <div>You are viewing page {page}</div>
+        </>
+    );
+}
+
+export default Pagination;
+```
+- __GIVEN__: And this modified `getWorkshops()` service method in workshops app's `src/services/workshops.js`
+```js
+const getWorkshops = async (page = 1, category = '') => {
+    const params = {
+        _page: page,
+    };
+
+    if (category !== '') {
+        params.category = category;
+    }
+
+    const response = await axios.get(
+        `${baseUrl}/workshops`,
+        {
+            params,
+        }
+    );
+
+    return response.data;
+};
+```
+- __EXERCISE__: Use these in workshops app's `WorkshopsList.js` to implement pagination, and server-side enabled category filtering
+- __SOLUTION__: First add `Pagination` component as an export in shared app's `src/components/index.js`
+```js
+import ErrorAlert from './ErrorAlert/ErrorAlert';
+import FormattedDate from './FormattedDate/FormattedDate';
+import LoadingSpinner from './LoadingSpinner/LoadingSpinner';
+import Pagination from './Pagination/Pagination';
+
+export { ErrorAlert, FormattedDate, LoadingSpinner, Pagination };
+```
+- Now use this and the modified service in workshop app's `src/components/workshops/WorkshopsList/WorkshopsList.js`
+```jsx
+import { useEffect, useState } from 'react';
+import { Alert, Col, Row, Spinner } from "react-bootstrap";
+import { useSearchParams } from "react-router-dom";
+
+import { ErrorAlert, LoadingSpinner, Pagination } from 'shared/components';
+
+import Item from './Item/Item';
+
+import { getWorkshops } from '../../../services/workshops';
+
+const WorkshopsList = () => {
+    const [loading, setLoading] = useState(true);
+    const [workshops, setWorkshops] = useState([]);
+    const [error, setError] = useState(null);
+
+    // ?page=2&category=frontend
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Default to page 1
+    const page = +(searchParams.get("page") || "1");
+    // Default to no category (empty string)
+    const category = searchParams.get("category") || "";
+
+    const previous = (by) => {
+        if (page <= 1) {
+            return;
+        }
+
+        // ?page=2&category=frontend -> // ?page=1&category=frontend
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('page', '' + (page - by));
+        setSearchParams(newParams);
+    };
+
+    const next = (by) => {
+        // ?page=1 -> ?page=2
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('page', '' + (page + by));
+        setSearchParams(newParams);
+    };
+
+    const setCategory = (category) => {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('category', category);
+        setSearchParams(newParams);
+    };
+
+    useEffect(
+        () => {
+            setLoading(true);
+
+            const helper = async () => {
+                try {
+                    const workshops = await getWorkshops(page, category);
+                    setWorkshops(workshops);
+                } catch (error) {
+                    setError(error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            helper();
+        },
+        [page, category]
+    );
+
+    return (
+        <div>
+            <h1>List of workshops</h1>
+            <hr />
+
+            <div className="my-4">
+                <Pagination
+                    page={page}
+                    disablePrevious={loading}
+                    disableNext={loading}
+                    onPrevious={previous}
+                    onNext={next}
+                />
+            </div>
+
+            <div>
+                <div className="btn-group my-3" role="group" aria-label="Filter by category">
+                    <button type="button" className="btn btn-primary" onClick={() => setCategory('')}>All</button>
+                    <button type="button" className="btn btn-danger" onClick={() => setCategory('frontend')}>Frontend</button>
+                    <button type="button" className="btn btn-warning" onClick={() => setCategory('backend')}>Backend</button>
+                    <button type="button" className="btn btn-success" onClick={() => setCategory('devops')}>Devops</button>
+                    <button type="button" className="btn btn-info" onClick={() => setCategory('language')}>Language</button>
+                    <button type="button" className="btn btn-light" onClick={() => setCategory('mobile')}>Mobile</button>
+                    <button type="button" className="btn btn-dark" onClick={() => setCategory('database')}>Database</button>
+                </div>
+            </div>
+
+            {loading === true && (
+                <LoadingSpinner />
+            )}
+
+            {error !== null && loading === false && (
+                <ErrorAlert err={error} />
+            )}
+
+            {
+                error === null && loading === false && (
+                    <Row xs={1} md={3} lg={4}>
+                        {
+                            workshops.map((w) => (
+                                <Col
+                                    className="my-3 d-flex"
+                                    key={w.id}
+                                >
+                                    <Item {...w} />
+                                </Col>
+                            ))
+                        }
+                    </Row>
+                )
+            }
+        </div>
+    );
+};
+
+export default WorkshopsList;
+```
+- __IMPORTANT__: Note especially how the search params changes in the memory router of the workshops app, syncs up with the browser router of the host container app (thus reflecting in the window location, i.e. address bar in the browser).
+
+## Step 17: Fetching the details of the correct workshop
+- Now that we have enabled routing let us fetch the details of the correct workshop in the workshop app's `src/components/workshops/WorkshopDetails/WorkshopDetails.js`
+```jsx
+import { useParams } from 'react-router-dom';
+```
+```jsx
+const WorkshopDetails = () => {
+    const { id } = useParams();
+}
+```
+- You should now be able to see the details of the correct workshop now.
+
+## Step 18: Adding child routing in workshop details page
+- Create 2 components which shall be set up as child routes of the workshop details page (which itself appears on `workshops/:id`)
+    - Sessions list shows up on `workshops/:id` (aka index path as it matches the parent workshop details path)
+    - Add session form shows up on `workshops/:id/add`
+- Create workshop app `src/components/WorkshopDetails/SessionsList/SessionsList.js`
+```jsx
+const SessionsList = () => {
+    return (
+        <div>SessionsList works!</div>
+    );
+};
+
+export default SessionsList;
+```
+- Create workshop app `src/components/WorkshopDetails/AddSession/AddSession.js`
+```jsx
+const AddSession = () => {
+    return (
+        <div>AddSession works!</div>
+    );
+};
+
+export default AddSession;
+```
+- Set up child routes configuration in workshop app's `src/bootstrap.js`
+```jsx
+import SessionsList from './components/workshops/WorkshopDetails/SessionsList/SessionsList';
+import AddSession from './components/workshops/WorkshopDetails/AddSession/AddSession';
+```
+```jsx
+const routes = [
+    {
+        path: '/workshops',
+        element: <Layout />,
+        children: [
+            {
+                index: true,
+                element: <WorkshopsList />
+            },
+            {
+                path: ':id',
+                element: <WorkshopDetails />,
+                children: [
+                    {
+                        index: true, // matches /workshops/:id
+                        element: <SessionsList />
+                    },
+                    {
+                        path: 'add', // matches /workshops/:id/add
+                        element: <AddSession />
+                    }
+                ]
+            }
+        ]
+    }
+];
+```
+- Make the following changes in workshop app's `src/components/workshops/WorkshopDetails/WorkshopDetails.js`. Note how `Outlet` is used here to show the corresponding child components for the child routes.
+```jsx
+import { NavLink, Outlet } from 'react-router-dom';
+```
+```jsx
+import "./WorkshopDetails.scss";
+```
+```jsx
+const WorkshopDetails = () => {
+    // code...
+    // ...
+
+    return (
+        <div>
+            {/* UI code... */}
+
+            <div className="mt-5">
+                <NavLink
+                    to={"/workshops/" + id}
+                    end
+                    className={
+                        ({ isActive }) => "btn btn-primary btn-sm btn-child-link me-2 " + (isActive ? "btn-active" : "")
+                    }
+                >
+                    Sessions List
+                </NavLink>
+                <NavLink
+                    to={"/workshops/" + id + "/add"}
+                    className={
+                        ({ isActive }) => "btn btn-primary btn-sm btn-child-link" + (isActive ? "btn-active" : "")
+                    }
+                >
+                    Add a session
+                </NavLink>
+            </div>
+
+            <div className="my-4">
+                <Outlet />
+            </div>
+        </div>
+    );
+};
+
+export default WorkshopDetails;
+```
+- Add its styles in the same folder in `WorkshopDetails.scss`
+```scss
+.workshops {
+    .btn-child-link {
+        opacity: 0.65;
+        transition: opacity 0.3s ease-in-out;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    .btn-active {
+        opacity: 1;
+    }
+}
+```
+- You should be able to navigate find between the child routes in both workshops app (standalone), and host container app.
+
+## Step 19: Add sessions related service methods
+- Create workshops app `src/services/sessions.js`
+```jsx
+import axios from "axios";
+
+const baseUrl = `https://workshops-server.onrender.com`;
+
+const getSessionsForWorkshop = async (workshopId) => {
+    const response = await axios.get(
+        `${baseUrl}/workshops/${workshopId}/sessions`
+    );
+
+    return response.data;
+};
+
+const voteForSession = async (sessionId, voteType) => {
+    // we generally pass data in PUT request. In this case we don't have any data.
+    const response = await axios.put(
+        `https://workshops-server.onrender.com/sessions/${sessionId}/${voteType}`
+    );
+
+    return response.data;
+};
+
+const postSession = async (session) => {
+    const response = await axios.post(
+        `https://workshops-server.onrender.com/sessions`,
+        session,
+        {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+
+    return response.data;
+};
+
+export { getSessionsForWorkshop, voteForSession, postSession };
+```
+
+## Step 20: Implement a shared VotingWidget component for use in SessionsList (which has voting feature)
+- First install FontAwesome library by following the steps at https://docs.fontawesome.com/web/use-with/react (follow steps for the free version of SVG Icon package)
+- In shared app add `src/components/VotingWidget/VotingWidget.js`
+```jsx
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCaretUp, faCaretDown } from "@fortawesome/free-solid-svg-icons";
+
+import './VotingWidget.scss';
+
+const VotingWidget = ({ votes, vote }) => {
+    return (
+        <div className="voting-widget">
+            <FontAwesomeIcon
+                icon={faCaretUp}
+                onClick={() => vote('upvote')}
+                className="fa-2x voting-widget-button"
+            />
+            <span className="voting-widget-votes">{votes}</span>
+            <FontAwesomeIcon
+                icon={faCaretDown}
+                onClick={() => vote('downvote')}
+                className="fa-2x voting-widget-button"
+            />
+        </div>
+    );
+}
+
+export default VotingWidget;
+```
+- In `src/components/VotingWidget/VotingWidget.scss`
+```scss
+.voting-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .voting-widget-button {
+        cursor: pointer;
+    }
+
+    .voting-widget-votes {
+        font-size: 1.5em;
+    }
+}
+```
+- Include it as an export available to other MFEs. In `src/components/index.js`
+```js
+import ErrorAlert from './ErrorAlert/ErrorAlert';
+import FormattedDate from './FormattedDate/FormattedDate';
+import LoadingSpinner from './LoadingSpinner/LoadingSpinner';
+import Pagination from './Pagination/Pagination';
+import VotingWidget from './VotingWidget/VotingWidget';
+
+export { ErrorAlert, FormattedDate, LoadingSpinner, Pagination, VotingWidget };
+```
+
+## Step 21: Implement the SessionsList component features
+- In workshop app's `src/components/workshops/WorkshopDetails/SessionsList/SessionsList.js`
+```jsx
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Col, ListGroup, Row } from "react-bootstrap";
+// import { toast } from "react-toastify";
+
+import { ErrorAlert, LoadingSpinner } from 'shared/components';
+import Item from "./Item/Item";
+
+import { getSessionsForWorkshop, voteForSession } from "../../../../services/sessions";
+
+const SessionsList = () => {
+    const { id } = useParams();
+
+    const [loading, setLoading] = useState(true);
+    const [sessions, setSessions] = useState([]);
+    const [error, setError] = useState(null);
+
+    useEffect(
+        () => {
+            const helper = async () => {
+                setLoading(true);
+
+                try {
+                    const sessions = await getSessionsForWorkshop(id);
+
+                    setLoading(false);
+                    setSessions(sessions);
+                } catch (error) {
+                    setLoading(false);
+                    setError(error);
+                }
+            };
+
+            helper();
+        },
+        [id]
+    );
+
+    const vote = useCallback(
+        async (
+            sessionId,
+            voteType
+        ) => {
+            try {
+                const updatedSession = await voteForSession(sessionId, voteType);
+                setSessions(
+                    sessions => sessions.map(s => s.id === sessionId ? updatedSession : s)
+                );
+                // toast('You vote for session ' + updatedSession.name + ' has been captured');
+                alert('You vote for session ' + updatedSession.name + ' has been captured');
+            } catch (error) {
+                // toast(error.message);
+                alert(error.message);
+            }
+        },
+        [voteForSession, setSessions/*, toast */]
+    );
+
+    return (
+        <div>
+            <h2>List of Sessions</h2>
+
+            <hr />
+
+            {loading && (
+                <LoadingSpinner />
+            )}
+
+            {!loading && error && (
+                <ErrorAlert error={error} />
+            )}
+
+            {!loading && !error && (
+                <ListGroup>
+                    {sessions.map((s, idx) => (
+                        <ListGroup.Item key={s.id}>
+                            <Item
+                                session={s}
+                                vote={(voteType) => vote(s.id, voteType)}
+                            />
+                        </ListGroup.Item>
+                    ))}
+                </ListGroup>
+            )}
+        </div>
+    );
+};
+
+export default SessionsList;
+```
+- In `src/components/workshops/WorkshopDetails/SessionsList/Item/Item.js`
+```jsx
+import { memo } from 'react';
+import { Col, Row } from "react-bootstrap";
+import { VotingWidget } from 'shared/components';
+
+const Item = memo(
+    ({ session, vote }) => {
+        const { id, name, speaker, level, abstract, duration, upvoteCount } = session;
+
+        return (
+            <Row>
+                <Col
+                    xs={1}
+                    className="d-flex flex-column justify-content-center align-items-center"
+                >
+                    <VotingWidget
+                        votes={upvoteCount}
+                        vote={vote}
+                    />
+                </Col>
+                <Col xs={11}>
+                    <h3>{name}</h3>
+                    <div>by {speaker}</div>
+                    <div>{level}</div>
+                    <div>Duration: {duration}</div>
+                    <div>{abstract}</div>
+                </Col>
+            </Row>
+        )
+    }
+);
+
+export default Item;
+```
+- You should now be able to see the list of sessions, and vote for session in both workshops app (standalone), and the host container app
+
+## Step 22: Implement the AddSession component features
+- In the workshops app, install `react-hook-form` for form validation
+```
+npm i react-hook-form
+```
+- In workshop app's `src/components/workshops/WorkshopDetails/AddSession/AddSession.js`
+```jsx
+import { Button, Form } from "react-bootstrap";
+import { Link, useNavigate, useParams } from "react-router-dom";
+// import { toast } from 'react-toastify';
+import { useForm } from 'react-hook-form';
+
+import { postSession } from '../../../../services/sessions';
+
+const AddSession = () => {
+    const { id } = useParams();;
+    const navigate = useNavigate();
+
+    const { register, formState: { errors }, getValues, handleSubmit } = useForm({
+        mode: 'all'
+    });
+
+    const validateDurationAndLevel = () => {
+        const duration = +getValues('duration');
+        const level = getValues('level');
+
+        if (level === 'Basic' && duration < 1) {
+            return 'Basic level shold have minimum 1 hour duration';
+        }
+
+        if (level === 'Intermediate' && duration < 2) {
+            return 'Intermediate level shold have minimum 2 hours duration';
+        }
+
+        if (level === 'Advanced' && duration < 3) {
+            return 'Advanced level shold have minimum 3 hours duration';
+        }
+
+        return true;
+    };
+
+    const addSession = async (sessionData) => {
+        const session = {
+            ...sessionData,
+            workshopId: id,
+            upvoteCount: 0,
+            sequenceId: +sessionData.sequenceId,
+            duration: +sessionData.duration,
+        };
+
+        console.log(session);
+
+        try {
+            const newSession = await postSession(session);
+            // toast("New session was added");
+            alert("New session was added");
+            navigate("/workshops/" + id);
+        } catch (error) {
+            // toast(error.message);
+            alert(error.message);
+        }
+    };
+
+    return (
+        <div>
+            <h1 className="d-flex justify-content-between align-items-center">
+                Add a Session
+                <Link to=".." className="btn btn-primary">
+                    List of sessions
+                </Link>
+            </h1>
+
+            <hr />
+
+            <Form onSubmit={handleSubmit(addSession)}>
+                <Form.Group className="mb-4" controlId="sequenceId">
+                    <Form.Label>Sequence ID</Form.Label>
+                    <Form.Control
+                        type="text"
+                        placeholder="The Sequence ID of the session (eg. 1, 2, 3...)"
+                        {...register('sequenceId', { required: true, pattern: /^\d+$/ })}
+                    />
+                    {
+                        errors.sequenceId && (
+                            <div className="text-danger">
+                                {
+                                    errors.sequenceId?.type === 'required' && (
+                                        <div>This field is required</div>
+                                    )
+                                }
+                                {
+                                    errors.sequenceId?.type === 'pattern' && (
+                                        <div>Sequence ID must be a positive integer</div>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
+                </Form.Group>
+                <Form.Group className="mb-4" controlId="name">
+                    <Form.Label>Name</Form.Label>
+                    <Form.Control
+                        type="text"
+                        placeholder="Name of the session, Eg. Programming 101 - Introduction to programming"
+                        {...register('name', { required: true, pattern: /^[A-Za-z\d][A-Za-z\d .,'&_\/:+#@-]*$/ })}
+                    />
+                    {
+                        errors.name && (
+                            <div className="text-danger">
+                                {
+                                    errors.name?.type === 'required' && (
+                                        <div>This field is required</div>
+                                    )
+                                }
+                                {
+                                    errors.name?.type === 'pattern' && (
+                                        <div>Name of the session has characters that are not allowed - Must begin with alphanumeric, and can have alphanumeric, spaces, and these characters only - .,'&_/:+#@-</div>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
+                </Form.Group>
+                <Form.Group className="mb-4" controlId="speaker">
+                    <Form.Label>Speaker</Form.Label>
+                    <Form.Control
+                        type="text"
+                        placeholder="Name of the speaker(s). Eg. John Doe, Jane Doe"
+                        {...register('speaker', { required: true, pattern: /^[A-Za-z][A-Za-z ]*(,\s*[A-Za-z][A-Za-z ]*)*$/ })}
+                    />
+                    {
+                        errors.speaker && (
+                            <div className="text-danger">
+                                {
+                                    errors.speaker?.type === 'required' && (
+                                        <div>This field is required</div>
+                                    )
+                                }
+                                {
+                                    errors.speaker?.type === 'pattern' && (
+                                        <div>Comma-separated name(s) of speaker(s)</div>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
+                </Form.Group>
+                <Form.Group className="mb-4" controlId="duration">
+                    <Form.Label>Duration</Form.Label>
+                    <Form.Control
+                        type="text"
+                        placeholder="The duration of the session in hours (eg. 2.5)"
+                        {...register('duration', { required: true, pattern: /^\d+(\.\d+)?$/ })}
+                    />
+                    {
+                        errors.duration && (
+                            <div className="text-danger">
+                                {
+                                    errors.duration?.type === 'required' && (
+                                        <div>This field is required</div>
+                                    )
+                                }
+                                {
+                                    errors.duration?.type === 'pattern' && (
+                                        <div>Only number with optional decimal part allowed</div>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
+                </Form.Group>
+                <Form.Group className="mb-4" controlId="level">
+                    <Form.Label>Level</Form.Label>
+                    <Form.Select
+                        aria-label="Level"
+                        {...register('level', { required: true, validate: validateDurationAndLevel })}
+                    >
+                        <option disabled>-- Select the level --</option>
+                        <option value="Basic">Basic</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                    </Form.Select>
+                    {
+                        errors.level && (
+                            <div className="text-danger">
+                                {
+                                    errors.level?.type === 'required' && (
+                                        <div>This field is required</div>
+                                    )
+                                }
+                                {
+                                    errors.level?.type === 'validate' && (
+                                        <div>The duration in insufficient for the selected level</div>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
+                </Form.Group>
+                <Form.Group className="mb-4" controlId="abstract">
+                    <Form.Label>Abstract</Form.Label>
+                    <Form.Control
+                        as="textarea"
+                        rows={3}
+                        {...register('abstract', { required: true, minLength: 20, maxLength: 1024 })}
+                    />
+                    {
+                        errors.abstract && (
+                            <div className="text-danger">
+                                {
+                                    errors.abstract?.type === 'required' && (
+                                        <div>This field is required</div>
+                                    )
+                                }
+                                {
+                                    errors.abstract?.type === 'minLength' && (
+                                        <div>Minimum 20 characters needed</div>
+                                    )
+                                }
+                                {
+                                    errors.abstract?.type === 'maxLength' && (
+                                        <div>Maximum 1024 characters allowed</div>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
+                </Form.Group>
+
+                <Button type="submit">Add a session</Button>
+            </Form>
+        </div>
+    );
+};
+
+export default AddSession;
+```
+- You should now be able to add a session, in both workshops app (standalone), and the host container app
