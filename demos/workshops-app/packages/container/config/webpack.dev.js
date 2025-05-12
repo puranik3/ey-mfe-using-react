@@ -19,7 +19,7 @@ const devConfig = {
         new ModuleFederationPlugin({
             name: 'container', // this is not necessary for the container MFE (As no one else is going to consume anything from this)
             // In 'home@http://localhost:3001/remoteEntry.js',, 'home' (RHS) is the name of the remote MFE
-            // home: blahblah -> home (LHS) here is the name we assign within container in order to refer to the remote MFE -> this will be used when we import anything from home MFE
+            // home: blahblah -> home (LHS) here is the name we assign within container in order to refer to the remote MFE -> this will be used when we import anything from home MFE (eg. import { mount from 'home/HomeApp')
             remotes: {
                 home: 'home@http://localhost:3001/remoteEntry.js',
             },
