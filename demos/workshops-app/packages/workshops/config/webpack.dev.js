@@ -18,7 +18,25 @@ const devConfig = {
     plugins: [
         new ModuleFederationPlugin({
             name: 'workshops',
-            shared: packageJson.dependencies,
+            filename: 'remoteEntry.js',
+            exposes: {
+                './WorkshopsApp': './src/bootstrap.js'
+            },
+            shared: {
+                ...packageJson.dependencies,
+                react: {
+                    singleton: true,
+                    requiredVersion: '^19.1.0',
+                },
+                'react-dom': {
+                    singleton: true,
+                    requiredVersion: '^19.1.0',
+                },
+                'react-router-dom': {
+                    singleton: true,
+                    requiredVersion: '^7.6.0',
+                },
+            }
         }),
     ],
 };
