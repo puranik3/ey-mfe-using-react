@@ -1353,7 +1353,10 @@ export default () => {
 - You should now be able to navigate between the workshop list and details pages without issues, both in the standalone workshops app, and the host container app.
 - __IMPORTANT__: Make sure to understand 100% the communication and syncing up, of state of the host container app's browser router, and the remote workshop app's memory router.
 
-## Step 16: Exercise: Implement Pagination using the following pagination component, and server-side enabled category filtering
+## Step 16: EXERCISE: Unmounting HomeApp
+- Modify `mount()` of home app to return the `unmount` function from it. In shell container app, get hold of `unmount` when mounting `HomeApp`. Make sure to set up unmounting when navigating away from the the home app. This is left as an exercise
+
+## Step 17: Exercise: Implement Pagination using the following pagination component, and server-side enabled category filtering
 - __GIVEN__: Add this in shared app's `src/components/Pagination/Pagination.js`
 ```jsx
 const Pagination = (
@@ -1547,7 +1550,7 @@ export default WorkshopsList;
 ```
 - __IMPORTANT__: Note especially how the search params changes in the memory router of the workshops app, syncs up with the browser router of the host container app (thus reflecting in the window location, i.e. address bar in the browser).
 
-## Step 17: Fetching the details of the correct workshop
+## 18: Fetching the details of the correct workshop
 - Now that we have enabled routing let us fetch the details of the correct workshop in the workshop app's `src/components/workshops/WorkshopDetails/WorkshopDetails.js`
 ```jsx
 import { useParams } from 'react-router-dom';
@@ -1559,7 +1562,7 @@ const WorkshopDetails = () => {
 ```
 - You should now be able to see the details of the correct workshop now.
 
-## Step 18: Adding child routing in workshop details page
+## Step 19: Adding child routing in workshop details page
 - Create 2 components which shall be set up as child routes of the workshop details page (which itself appears on `workshops/:id`)
     - Sessions list shows up on `workshops/:id` (aka index path as it matches the parent workshop details path)
     - Add session form shows up on `workshops/:id/add`
@@ -1680,7 +1683,7 @@ export default WorkshopDetails;
 ```
 - You should be able to navigate find between the child routes in both workshops app (standalone), and host container app.
 
-## Step 19: Add sessions related service methods
+## Step 20: Add sessions related service methods
 - Create workshops app `src/services/sessions.js`
 ```jsx
 import axios from "axios";
@@ -1721,7 +1724,7 @@ const postSession = async (session) => {
 export { getSessionsForWorkshop, voteForSession, postSession };
 ```
 
-## Step 20: Implement a shared VotingWidget component for use in SessionsList (which has voting feature)
+## Step 21: Implement a shared VotingWidget component for use in SessionsList (which has voting feature)
 - First install FontAwesome library by following the steps at https://docs.fontawesome.com/web/use-with/react (follow steps for the free version of SVG Icon package)
 - In shared app add `src/components/VotingWidget/VotingWidget.js`
 ```jsx
@@ -1777,7 +1780,7 @@ import VotingWidget from './VotingWidget/VotingWidget';
 export { ErrorAlert, FormattedDate, LoadingSpinner, Pagination, VotingWidget };
 ```
 
-## Step 21: Implement the SessionsList component features
+## Step 22: Implement the SessionsList component features
 - In workshop app's `src/components/workshops/WorkshopDetails/SessionsList/SessionsList.js`
 ```jsx
 import { useCallback, useEffect, useState } from "react";
@@ -1907,7 +1910,7 @@ export default Item;
 ```
 - You should now be able to see the list of sessions, and vote for session in both workshops app (standalone), and the host container app
 
-## Step 22: Implement the AddSession component features
+## Step 23: Implement the AddSession component features
 - In the workshops app, install `react-hook-form` for form validation
 ```
 npm i react-hook-form
