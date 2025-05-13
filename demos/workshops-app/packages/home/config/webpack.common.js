@@ -23,12 +23,27 @@ module.exports = {
                 }
             },
             {
-                test: /\.(css|s[ac]ss)$/i,
+                test: /\.module\.s?css$/,
                 use: [
                     'style-loader',
-                    'css-loader',
+                    {
+                        loader: 'css-loader',
+                        options: {
+                            modules: {
+                                localIdentName: '[name]__[local]--[hash:base64:5]', // This helps with debugging
+                                exportLocalsConvention: 'camelCase',
+                                namedExport: false
+                            },
+                            importLoaders: 1
+                        }
+                    },
                     'sass-loader',
                 ],
+            },
+            {
+                test: /\.s?css$/,
+                exclude: /\.module\.s?css$/,
+                use: ['style-loader', 'css-loader', 'sass-loader']
             },
         ]
     },

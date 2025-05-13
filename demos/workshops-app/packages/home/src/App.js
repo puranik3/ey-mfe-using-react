@@ -2,7 +2,9 @@ import Home from './components/Home/Home';
 
 const App = () => {
     return (
-        <Home />
+        <div className="app-home">
+            <Home />
+        </div>
     );
 };
 

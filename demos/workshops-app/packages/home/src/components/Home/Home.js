@@ -1,7 +1,10 @@
+// import './Home.scss';
+import styles from './Home.module.scss';
+
 const Home = () => {
     return (
         <>
-            <h1>Workshops App</h1>
+            <h1 className={styles.heading}>Workshops App</h1>
 
             <hr />
 
