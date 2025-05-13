@@ -1093,6 +1093,7 @@ export default App;
     - To sync the changes in the browser router (i.e. host container app `Link`s that change the browser router state, and consequently `window.location`) with the remote app memory router state (workshops app in this case), we return `onParentNavigate` function from `mount()`.
         - We set `onParentNavigate` to be called on route state changes using an effect that is triggered on pathname changes (note that we could also trigger on `search` changes but we do not have such a requirement in this app - __this is left for your exploration__).
 - We set up using data router approach of React Router v6 / v7 In workshops app's `src/bootstrap.js`. The data router requires us to define `Layout.js` file for app-wide layout. Here we do not have a common layout for WorkshopsList and WorkshopDetails pages, hence the layout simply renders an `Outlet`. In workshops app add `src/Layout.js`.
+- We also make sure to pass `unmount()` function back after mounting. This is needed for React to do the necessary cleanup when the workshops app is unmounted on navigating away from it in the shell container app.
 ```jsx
 // Layout.jsx
 import { Link, Outlet } from 'react-router-dom';
@@ -1182,15 +1183,23 @@ const mount = (rootElement, defaultRouter, initialPath, onNavigate) => {
         </div>
     );
 
-    return function onParentNavigate({ nextPathname }) {
-        console.log('workshops::bootstrap::onParentNavigate', nextPathname);
+    return {
+        onParentNavigate({ nextPathname }) {
+            console.log('workshops::bootstrap::onParentNavigate', nextPathname);
 
-        const { pathname } = router.state.location;
+            // const { pathname } = history.location;
+            const { pathname } = router.state.location;
 
-        if (pathname !== nextPathname) {
-            console.log('workshops::bootstrap::onParentNavigate Navigating to nextPathname:', nextPathname);
+            if (pathname !== nextPathname) {
+                // history.push(nextPathname);
+                console.log('workshops::bootstrap::onParentNavigate Navigating to nextPathname:', nextPathname);
 
-            router.navigate(nextPathname/*, { replace: true }*/);
+                router.navigate(nextPathname/*, { replace: true }*/);
+            }
+        },
+        unmount() {
+            console.log('workshops::bootstrap::unmount');
+            root.unmount();
         }
     };
 };
@@ -1293,7 +1302,7 @@ export default () => {
 
     useEffect(
         () => {
-            onParentNavigateRef.current = mount(
+            const mountResult = mount(
                 ref.current,
                 {
                     pathname: window.location.pathname,
@@ -1309,6 +1318,16 @@ export default () => {
                     }
                 }
             );
+
+            nParentNavigateRef.current = mountResult.onParentNavigate;
+            
+            const unmount = mountResult.unmount;
+
+            // any clean up on unmounting workshops app can be done in the returned cleanup function
+            return () => {
+                console.log('container::WorkshopsApp::useEffect unmounting');
+                unmount();
+            };
         },
         []
     );
@@ -2126,3 +2145,4 @@ const AddSession = () => {
 export default AddSession;
 ```
 - You should now be able to add a session, in both workshops app (standalone), and the host container app
+
