@@ -1350,6 +1350,15 @@ export default () => {
     return <div ref={ref} />;
 };
 ```
+- In the workshops app `src/components/workshops/WorkshopsList/Item/Item.js` add a link to the details page
+```js
+import { Link } from 'react-router-dom';
+```
+```js
+<Link to={"/workshops/" + id}>
+    <Button variant="primary">Know more</Button>
+</Link>
+```
 - You should now be able to navigate between the workshop list and details pages without issues, both in the standalone workshops app, and the host container app.
 - __IMPORTANT__: Make sure to understand 100% the communication and syncing up, of state of the host container app's browser router, and the remote workshop app's memory router.
 
