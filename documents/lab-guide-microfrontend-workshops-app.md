@@ -1210,7 +1210,14 @@ if (process.env.NODE_ENV === 'development') {
     if (rootElement) {
         console.log('workshops::bootstrap::Mounting Workshops App in isolation');
 
-        mount(rootElement, createBrowserRouter(routes));
+        if (rootElement) {
+            mount(
+                rootElement,
+                {
+                    defaultRouter: createBrowserRouter(routes)
+                }
+            );
+        }
     }
 }
 
@@ -2158,3 +2165,441 @@ export default AddSession;
 ```
 - You should now be able to add a session, in both workshops app (standalone), and the host container app
 
+## Step 24: Communication strategies (between MFEs using the same UI framework - say, React)
+- __NOTES__:
+    - We would like to share state between MFEs. Here we see some strategies for sharing state globally. If MFEs are mounted independently like we have earlier, state sharing / communication mechanisms like Context API, become difficult as they are scoped to root of the application, and when we mount remote MFEs, we end up creating multiple React DOM root elements (`createRoot()` called by the shell container app, and again by the remote MFE when it is rendered). Context sharing become very difficult in such cases, and can involve having separate contexts and syncing up one when the other changes (much like how we synced up history router in shell container MFE and memory router in remote MFE).
+    - We limit discussion to only MFEs that ALL use React here. This way we need not use `mount()` to mount the component. Again, we need not resort to using separate browser router and memory router in such cases (we can assume the shell app renders the app in a `BrowserRouter`, and the remote MFEs set up their components to be rendered using `Route`. In standalone mode we need to hoever take care to render them in a BrowserRouter).
+    - Since we have adopted a data router approach, and set up workshops app using its own `RouterProvider` with `routes` created and passed to it, the workshop app's `App` component cannot directly be used in the shell container app (`RouterProvider` cannot be nested). So the `App` component cannot be directly rendered inside the shell container app. We shall instead take the example of Home component to illustrate Context API-based communication
+
+### Sharing global state using Context API
+- Let us have a global shared theme (light / dark). We first set up the context in the shared app's `src/contexts/theme.js`
+```jsx
+import { createContext, useContext, useState } from 'react';
+
+export const ThemeContext = createContext();
+
+export const ThemeProvider = ({ children }) => {
+    const [theme, setTheme] = useState('light'); // or load from localStorage
+
+    const contrastTheme = theme === 'light' ? 'dark' : 'light';
+
+    const toggleTheme = () => {
+        setTheme((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
+    };
+
+    return (
+        <ThemeContext.Provider value={{ theme, contrastTheme, setTheme, toggleTheme }}>
+            {children}
+        </ThemeContext.Provider>
+    );
+};
+
+export const useTheme = () => useContext(ThemeContext);
+```
+- Since we may have many such shared contexts, we choose here to export contexts through a common file. In shared app's `src/contexts/index.js`, we re-export these definitions (import followed by export).
+```js
+export * from './theme';
+```
+- __EXERCISE__: Create a component in the shared app to test the context is able to maintain and share theme state.
+- Expose this in shared app's `config/webpack.dev.js`
+```js
+exposes: {
+    './components': './src/components/index.js',
+    './contexts': './src/contexts/index.js',
+},
+```
+- Next we include shared app as a remote in the home app. In home app's `webpack.dev.js`
+```js
+remotes: {
+    container: 'container@http://localhost:3000/remoteEntry.js',
+    shared: 'shared@http://localhost:3003/remoteEntry.js',
+},
+```
+- In home app's `src/components/Home/Home.js` we set up to consume the theme context
+```jsx
+import { useTheme } from 'shared/contexts';
+
+// import './Home.scss';
+import styles from './Home.module.scss';
+
+const Home = () => {
+    const { theme, contrastTheme } = useTheme();
+
+    return (
+        <div className={`home p-5 bg-${theme} text-${contrastTheme}`}>
+            <h1 className={styles.heading}>Workshops App</h1>
+
+            <hr />
+
+            <section>
+                <p>Welcome to Workshops App</p>
+                <p>
+                    The app serves details of (fictitious) technical workshops happening in
+                    various cities. Every workshop has a broad topic (eg. JavaScript), and a
+                    workshop has many sessions (each session covers a sub-topic, eg. Closures in
+                    JavaScript).
+                </p>
+                <p>
+                    You can view a list of workshops, details of every workshop, add a workshop,
+                    view the list of sessions in a workshop, and also add a new session for a
+                    workshop.
+                </p>
+            </section>
+        </div>
+    );
+}
+
+export default Home;
+```
+- Also define a simple `ThemeToggler` component for testing if the Home component renders with the correct theme, and reacts to theme changes. In `src/components/ThemeToggler/ThemeToggler.js`. Later we set up to __show this component in only standalone mode__.
+```jsx
+import { Button } from "react-bootstrap";
+import { useTheme } from "shared/contexts";
+
+const ThemeToggler = () => {
+    const { toggleTheme } = useTheme();
+
+    return (
+        <Button
+            variant="outline-primary"
+            onClick={toggleTheme}
+        >
+            Toggle theme
+        </Button>
+    );
+};
+
+export default ThemeToggler;
+```
+- The theme context will be provided by the shell container app. But we still need a theme provider when it is run in standalone mode. So we make the following changes in home app's `bootstrap.js`. We essentialy have included a mode passed as an options argument to `mount()`. We use this to decide whether to render the home app with a `ThemeProvider` (standalone), or not (when hosted in the shell container app).
+```jsx
+import { createRoot } from 'react-dom/client';
+import { ThemeProvider } from 'shared/contexts';
+import ThemeToggler from './components/ThemeToggler/ThemeToggler';
+
+import 'bootstrap/dist/css/bootstrap.css';
+
+import App from './App';
+
+// Mount function to start up the app
+const mount = (rootElement, { mode = 'hosted' } = {}) => {
+    const root = createRoot(rootElement);
+
+    let el;
+
+    if (mode === 'standalone') { // standalone, hence the theme will be provided by self
+        el = (
+            <ThemeProvider>
+                <ThemeToggler />
+                <App />
+            </ThemeProvider>
+        );
+    } else { // hosted, hence the theme will be provided by the host container app
+        el = <App />;
+    }
+
+    root.render(el);
+
+    return {
+        unmount() {
+            root.unmount();
+        }
+    }
+};
+
+if (process.env.NODE_ENV === 'development') {
+    const rootElement = document.getElementById('root-home');
+
+    if (rootElement) {
+        mount(rootElement, { mode: 'standalone' });
+    }
+}
+
+export { mount };
+```
+- Start the home app in standalone mode, and verify it works fine. You should be able to toggle the theme.
+- As discussed in the notes above, we shall not work in a framework-agnostic mode when rendering the home app (we assume __React__ across the apps under discussion). Let us expose the Home component from the home app. In home app's `webpack.dev.js`
+```js
+exposes: {
+    './HomeApp': './src/bootstrap',
+    './HomeAppComponent': './src/App',
+},
+```
+- Add shared app as remote in shell container app's `webpack.dev.js`
+```js
+remotes: {
+    shared: 'shared@http://localhost:3003/remoteEntry.js',
+},
+```
+- Now in the container app's `App.js` make the following changes
+```jsx
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+
+import { ThemeProvider } from 'shared/contexts';
+
+import Layout from './Layout';
+
+// import HomeApp from './components/HomeApp';
+import HomeAppComponent from 'home/HomeAppComponent';
+import WorkshopsApp from './components/WorkshopsApp';
+
+const routes = [
+    {
+        path: '/',
+        element: <Layout />,
+        children: [
+            {
+                index: true,
+                // element: <HomeApp /> // this is the framework-agnostic way of mounting the home MFE
+                element: <HomeAppComponent /> // this is the react way of mounting the home MFE
+            },
+            {
+                path: 'workshops/*',
+                element: <WorkshopsApp />
+            }
+        ]
+    }
+];
+
+const router = createBrowserRouter(
+    routes
+);
+
+const App = () => {
+    return (
+        <ThemeProvider>
+            <RouterProvider router={router} />
+        </ThemeProvider>
+    );
+};
+
+export default App;
+```
+- Add the theme toggling code in container component's `src/components/Menu/Menu.js`
+```jsx
+import { NavLink } from 'react-router-dom';
+import Container from 'react-bootstrap/Container';
+import Nav from 'react-bootstrap/Nav';
+import Navbar from 'react-bootstrap/Navbar';
+import NavDropdown from 'react-bootstrap/NavDropdown';
+
+import { useTheme } from 'shared/contexts';
+
+import './Menu.scss';
+
+const Menu = () => {
+    const { theme, contrastTheme, toggleTheme } = useTheme();
+
+    return (
+        <Navbar collapseOnSelect expand="lg" variant={theme} className={`bg-${theme}`}>
+            <Container>
+                <Navbar.Brand as={NavLink} to="/">Workshops App</Navbar.Brand>
+
+                <Navbar.Toggle aria-controls="responsive-navbar-nav" />
+
+                <Navbar.Collapse id="responsive-navbar-nav">
+                    <Nav className="me-auto">
+                        <Nav.Link as={NavLink} to="/" end>Home</Nav.Link>
+                        <Nav.Link as={NavLink} to="/workshops" end>List of workshops</Nav.Link>
+                    </Nav>
+                    <NavDropdown title="Personalize" id="basic-nav-dropdown" className={`text-${contrastTheme}`}>
+                        <NavDropdown.Item as={NavLink} to="/workshops/favorites">
+                            Favorites
+                        </NavDropdown.Item>
+                        <NavDropdown.Item href="#" onClick={toggleTheme}>
+                            Change Theme
+                        </NavDropdown.Item>
+                    </NavDropdown>
+                </Navbar.Collapse>
+            </Container>
+        </Navbar>
+    );
+};
+
+export default Menu;
+```
+- Make sure to restart the home and container apps. You container app should work fine, and you should be able to toggle the theme.
+
+### Sharing global state using Redux Store
+- Install Redux libraries (RTK), and React Redux in all apps (some may not need one of them though)
+```
+npm i @reduxjs/toolkit react-redux
+```
+- In shared module, add `src/store/features/themeSlice.js`
+```js
+import { createSlice } from "@reduxjs/toolkit";
+
+const initialState = {
+    value: "light",
+    contrastValue: "dark",
+};
+
+const themeSlice = createSlice({
+    name: "theme",
+    initialState,
+    reducers: {
+        toggleTheme(curState /*, payload */) {
+            curState.contrastValue = curState.value;
+            curState.value = curState.value === "light" ? "dark" : "light";
+        },
+    },
+});
+
+export const selectTheme = (state) => state.theme;
+export const { toggleTheme } = themeSlice.actions;
+export default themeSlice.reducer;
+```
+- Define the Redux store in shared app's `src/store/index.js`
+```js
+import { configureStore } from "@reduxjs/toolkit";
+import themeReducer from "./features/themeSlice";
+
+const store = configureStore({
+    reducer: {
+        theme: themeReducer
+    },
+});
+
+export default store;
+```
+- __EXERCISE__: Create a component in the shared app to test the store's is able to maintain and share theme state.
+- Expose the store and themeSlice. In shared app's `webpack.dev.js`
+```js
+exposes: {
+    './components': './src/components/index.js',
+    './contexts': './src/contexts/index.js',
+    './features/themeSlice': './src/store/features/themeSlice.js',
+    './store': './src/store/index.js',
+},
+```
+- Make sure shared app is a configured remote in home and shell container apps
+- Provide the Redux store in container app's `App.js` (we have replaced the Context API related code - you may save a copy of it in another file for reference)
+```jsx
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { Provider } from 'react-redux';
+
+import store from 'shared/store';
+
+import Layout from './Layout';
+
+// import HomeApp from './components/HomeApp';
+import HomeAppComponent from 'home/HomeAppComponent';
+import WorkshopsApp from './components/WorkshopsApp';
+
+const routes = [
+    {
+        path: '/',
+        element: <Layout />,
+        children: [
+            {
+                index: true,
+                // element: <HomeApp /> // this is the framework-agnostic way of mounting the home MFE
+                element: <HomeAppComponent /> // this is the react way of mounting the home MFE
+            },
+            {
+                path: 'workshops/*',
+                element: <WorkshopsApp />
+            }
+        ]
+    }
+];
+
+const router = createBrowserRouter(
+    routes
+);
+
+const App = () => {
+    return (
+        <Provider store={store}>
+            <RouterProvider router={router} />
+        </Provider>
+    );
+};
+
+export default App;
+```
+- Consume the store in the containers app's `src/components/Menu/Menu.js` in order to set up theme and toggling of the theme. Again, we have replaced theme context related code - save a copy if you wish.
+```jsx
+import { NavLink } from 'react-router-dom';
+import Container from 'react-bootstrap/Container';
+import Nav from 'react-bootstrap/Nav';
+import Navbar from 'react-bootstrap/Navbar';
+import NavDropdown from 'react-bootstrap/NavDropdown';
+
+import { useDispatch, useSelector } from 'react-redux';
+
+import { toggleTheme, selectTheme } from 'shared/features/themeSlice';
+
+import './Menu.scss';
+
+const Menu = () => {
+    const dispatch = useDispatch();
+    const { value: theme, contrastValue: contrastTheme } = useSelector(selectTheme);
+
+    return (
+        <Navbar collapseOnSelect expand="lg" variant={theme} className={`bg-${theme}`}>
+            <Container>
+                <Navbar.Brand as={NavLink} to="/">Workshops App</Navbar.Brand>
+
+                <Navbar.Toggle aria-controls="responsive-navbar-nav" />
+
+                <Navbar.Collapse id="responsive-navbar-nav">
+                    <Nav className="me-auto">
+                        <Nav.Link as={NavLink} to="/" end>Home</Nav.Link>
+                        <Nav.Link as={NavLink} to="/workshops" end>List of workshops</Nav.Link>
+                    </Nav>
+                    <NavDropdown title="Personalize" id="basic-nav-dropdown" className={`text-${contrastTheme}`}>
+                        <NavDropdown.Item as={NavLink} to="/workshops/favorites">
+                            Favorites
+                        </NavDropdown.Item>
+                        <NavDropdown.Item href="#" onClick={() => dispatch(toggleTheme())}>
+                            Change Theme
+                        </NavDropdown.Item>
+                    </NavDropdown>
+                </Navbar.Collapse>
+            </Container>
+        </Navbar>
+    );
+};
+
+export default Menu;
+```
+- Use the theme in home app's `src/components/Home/Home.js`. Again, we have replaced theme context related code - save a copy if you wish.
+```jsx
+import { useSelector } from 'react-redux';
+
+import { selectTheme } from 'shared/features/themeSlice';
+
+// import './Home.scss';
+import styles from './Home.module.scss';
+
+const Home = () => {
+    const { value: theme, contrastValue: contrastTheme } = useSelector(selectTheme);
+
+    return (
+        <div className={`home p-5 bg-${theme} text-${contrastTheme}`}>
+            <h1 className={styles.heading}>Workshops App</h1>
+
+            <hr />
+
+            <section>
+                <p>Welcome to Workshops App</p>
+                <p>
+                    The app serves details of (fictitious) technical workshops happening in
+                    various cities. Every workshop has a broad topic (eg. JavaScript), and a
+                    workshop has many sessions (each session covers a sub-topic, eg. Closures in
+                    JavaScript).
+                </p>
+                <p>
+                    You can view a list of workshops, details of every workshop, add a workshop,
+                    view the list of sessions in a workshop, and also add a new session for a
+                    workshop.
+                </p>
+            </section>
+        </div>
+    );
+}
+
+export default Home;
+```
+- You should now be able to toggle theme, and the color of the Menu and Home component should change
