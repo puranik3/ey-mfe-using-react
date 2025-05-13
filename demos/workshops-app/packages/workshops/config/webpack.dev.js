@@ -19,6 +19,9 @@ const devConfig = {
         new ModuleFederationPlugin({
             name: 'workshops',
             filename: 'remoteEntry.js',
+            remotes: {
+                shared: 'shared@http://localhost:3003/remoteEntry.js',
+            },
             exposes: {
                 './WorkshopsApp': './src/bootstrap.js'
             },

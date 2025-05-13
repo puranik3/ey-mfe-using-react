@@ -24,7 +24,21 @@ const devConfig = {
                 home: 'home@http://localhost:3001/remoteEntry.js',
                 workshops: 'workshops@http://localhost:3002/remoteEntry.js'
             },
-            shared: packageJson.dependencies,
+            shared: {
+                ...packageJson.dependencies,
+                react: {
+                    singleton: true,
+                    requiredVersion: '^19.1.0',
+                },
+                'react-dom': {
+                    singleton: true,
+                    requiredVersion: '^19.1.0',
+                },
+                'react-router-dom': {
+                    singleton: true,
+                    requiredVersion: '^7.6.0',
+                },
+            }
         }),
     ],
 };

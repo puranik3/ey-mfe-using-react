@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, Col, Row, Spinner } from "react-bootstrap";
 
+import { ErrorAlert, LoadingSpinner } from 'shared/components';
+
 import Item from './Item/Item';
 
 import { getWorkshops } from '../../../services/workshops';
@@ -31,28 +33,17 @@ const WorkshopsList = () => {
         []
     );
 
-
     return (
         <div>
             <h1>List of workshops</h1>
             <hr />
 
             {loading === true && (
-                <div className="d-flex justify-content-center">
-                    <Spinner
-                        animation="border"
-                        role="status"
-                        variant="dark"
-                    >
-                        <span className="visually-hidden">Loading...</span>
-                    </Spinner>
-                </div>
+                <LoadingSpinner />
             )}
 
             {error !== null && loading === false && (
-                <Alert variant="danger">
-                    {error.message}
-                </Alert>
+                <ErrorAlert error={error} />
             )}
 
             {

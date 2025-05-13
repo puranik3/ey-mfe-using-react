@@ -1,9 +1,9 @@
-import WorkshopsList from "./components/workshops/WorkshopsList/WorkshopsList";
+import { RouterProvider } from 'react-router-dom';
 
-const App = () => {
+const App = ({ router }) => {
     return (
-        <div className="app-workshops">
-            <WorkshopsList />
+        <div className="workshops">
+            <RouterProvider router={router} />
         </div>
     );
 };

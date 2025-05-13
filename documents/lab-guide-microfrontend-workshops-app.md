@@ -966,7 +966,7 @@ import { Col, Image, Row } from 'react-bootstrap';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faTimesCircle } from "@fortawesome/free-regular-svg-icons";
 
-import { ErrorAlert, FormattedDate, LoadingSpinner } from "shared/components/ErrorAlert";
+import { ErrorAlert, FormattedDate, LoadingSpinner } from "shared/components";
 
 import { getWorkshopById } from '../../../services/workshops';
 
@@ -1142,7 +1142,7 @@ const routes = [
     }
 ];
 
-const mount = (rootElement, defaultRouter, initialPath, onNavigate) => {
+const mount = (rootElement, { defaultRouter, initialPath, onNavigate }) => {
     console.log('workshops::bootstrap::mount initialPath:', initialPath);
 
     // We use browser history when the MFE is rendered in standalone mode, and memory router when rendered through the host container app
@@ -1305,7 +1305,7 @@ export default () => {
             const mountResult = mount(
                 ref.current,
                 {
-                    pathname: window.location.pathname,
+                    initialPath: window.location.pathname,
                     onNavigate({ pathname, nextPathname, search }) {
                         console.log('container::WorkshopsApp::onNavigate', pathname, nextPathname, search);
 
@@ -1319,7 +1319,7 @@ export default () => {
                 }
             );
 
-            nParentNavigateRef.current = mountResult.onParentNavigate;
+            onParentNavigateRef.current = mountResult.onParentNavigate;
             
             const unmount = mountResult.unmount;
 

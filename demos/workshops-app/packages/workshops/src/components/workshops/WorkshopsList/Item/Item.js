@@ -1,4 +1,6 @@
 import { Card, Button } from "react-bootstrap";
+import { FormattedDate } from "shared/components";
+import { Link } from 'react-router-dom';
 
 import './Item.scss';
 
@@ -15,12 +17,14 @@ const Item = ({ imageUrl, id, name, location, startDate, endDate }) => {
                         {location.address}, {location.city}, {location.state}
                     </div>
                     <div>
-                        {startDate}
+                        <FormattedDate date={startDate} />
                         <span> - </span>
-                        {endDate}
+                        <FormattedDate date={endDate} />
                     </div>
                 </Card.Text>
-                <Button variant="primary">Know more</Button>
+                <Link to={"/workshops/" + id}>
+                    <Button variant="primary">Know more</Button>
+                </Link>
             </Card.Body>
         </Card>
     );

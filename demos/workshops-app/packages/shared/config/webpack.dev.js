@@ -8,20 +8,20 @@ const packageJson = require('../package.json');
 const devConfig = {
     mode: "development",
     output: {
-        publicPath: "http://localhost:3001/",
+        publicPath: "http://localhost:3003/",
     },
     devServer: {
-        port: 3001,
+        port: 3003,
         historyApiFallback: {
             index: "/index.html",
         },
     },
     plugins: [
         new ModuleFederationPlugin({
-            name: 'home', // unique name for the MFE
+            name: 'shared', // unique name for the MFE
             filename: 'remoteEntry.js',
             exposes: {
-                './HomeApp': './src/bootstrap.js'
+                './components': './src/components/index.js',
             },
             // NOTE: Share third-party modules between MFEs when possible
             shared: {
