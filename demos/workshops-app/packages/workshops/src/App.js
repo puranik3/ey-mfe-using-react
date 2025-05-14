@@ -2,7 +2,7 @@ import { RouterProvider } from 'react-router-dom';
 
 const App = ({ router }) => {
     return (
-        <div className="workshops">
+        <div className="app-workshops">
             <RouterProvider router={router} />
         </div>
     );
