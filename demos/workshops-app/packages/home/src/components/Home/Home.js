@@ -1,13 +1,15 @@
 // import './Home.scss';
-import { useTheme } from 'shared/contexts';
+import { useSelector } from 'react-redux';
+
+import { selectTheme } from 'shared/features/themeSlice';
 
 import styles from './Home.module.scss';
 
 const Home = () => {
-    const { theme, contrastTheme } = useTheme();
+    const { value, contrastValue } = useSelector(selectTheme)
 
     return (
-        <div className={`home p-5 bg-${theme} text-${contrastTheme}`}>
+        <div className={`home p-5 bg-${value} text-${contrastValue}`}>
             <h1 className={styles.heading}>Workshops App</h1>
 
             <hr />

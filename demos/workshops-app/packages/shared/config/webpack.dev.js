@@ -23,6 +23,8 @@ const devConfig = {
             exposes: {
                 './components': './src/components/index.js',
                 './contexts': './src/contexts/index.js',
+                './features/themeSlice': './src/store/features/themeSlice.js',
+                './store': './src/store/index.js',
             },
             // NOTE: Share third-party modules between MFEs when possible
             shared: {

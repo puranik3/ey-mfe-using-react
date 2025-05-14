@@ -1,8 +1,10 @@
 import { createRoot } from 'react-dom/client';
+import { Provider } from 'react-redux';
+
+import { store } from 'shared/store';
 
 import 'bootstrap/dist/css/bootstrap.css';
 
-import { ThemeProvider } from 'shared/contexts'
 import App from './App';
 import ThemeToggler from './components/ThemeToggler/ThemeToggler';
 
@@ -14,10 +16,10 @@ const mount = (rootElement, { mode = 'hosted' } = {}) => {
 
     if (mode === 'standalone') {
         el = (
-            <ThemeProvider>
+            <Provider store={store}>
                 <ThemeToggler />
                 <App />
-            </ThemeProvider>
+            </Provider>
         );
     } else {
         el = <App />

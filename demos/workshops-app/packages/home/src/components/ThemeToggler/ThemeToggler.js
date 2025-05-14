@@ -1,13 +1,15 @@
 import { Button } from "react-bootstrap";
-import { useTheme } from "shared/contexts";
+import { useDispatch } from 'react-redux';
+
+import { toggleTheme } from 'shared/features/themeSlice';
 
 const ThemeToggler = () => {
-    const { toggleTheme } = useTheme();
+    const dispatch = useDispatch();
 
     return (
         <Button
             variant="outline-primary"
-            onClick={toggleTheme}
+            onClick={() => dispatch(toggleTheme())}
         >
             Toggle theme
         </Button>
