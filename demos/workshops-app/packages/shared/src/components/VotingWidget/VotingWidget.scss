@@ -1,0 +1,13 @@
+.voting-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .voting-widget-button {
+        cursor: pointer;
+    }
+
+    .voting-widget-votes {
+        font-size: 1.5em;
+    }
+}

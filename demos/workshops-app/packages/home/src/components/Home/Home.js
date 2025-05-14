@@ -1,9 +1,13 @@
 // import './Home.scss';
+import { useTheme } from 'shared/contexts';
+
 import styles from './Home.module.scss';
 
 const Home = () => {
+    const { theme, contrastTheme } = useTheme();
+
     return (
-        <>
+        <div className={`home p-5 bg-${theme} text-${contrastTheme}`}>
             <h1 className={styles.heading}>Workshops App</h1>
 
             <hr />
@@ -22,7 +26,7 @@ const Home = () => {
                     workshop.
                 </p>
             </section>
-        </>
+        </div>
     );
 }
 

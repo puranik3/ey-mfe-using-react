@@ -22,6 +22,7 @@ const devConfig = {
             filename: 'remoteEntry.js',
             exposes: {
                 './components': './src/components/index.js',
+                './contexts': './src/contexts/index.js',
             },
             // NOTE: Share third-party modules between MFEs when possible
             shared: {

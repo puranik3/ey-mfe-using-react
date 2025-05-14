@@ -20,6 +20,9 @@ const devConfig = {
         new ModuleFederationPlugin({
             name: 'home', // unique name for the MFE
             filename: 'remoteEntry.js',
+            remotes: {
+                shared: 'shared@http://localhost:3003/remoteEntry.js',
+            },
             exposes: {
                 './HomeApp': './src/bootstrap.js'
             },
