@@ -7,6 +7,8 @@ import 'bootstrap/dist/css/bootstrap.css';
 import Layout from './Layout';
 import WorkshopsList from './components/workshops/WorkshopsList/WorkshopsList';
 import WorkshopDetails from './components/workshops/WorkshopDetails/WorkshopDetails';
+import SessionsList from './components/workshops/WorkshopDetails/SessionsList/SessionsList';
+import AddSession from './components/workshops/WorkshopDetails/AddSession/AddSession';
 
 import App from './App';
 
@@ -22,6 +24,16 @@ const routes = [
             {
                 path: ':id',
                 element: <WorkshopDetails />,
+                children: [
+                    {
+                        index: true, // matches /workshops/:id
+                        element: <SessionsList />
+                    },
+                    {
+                        path: 'add', // matches /workshops/:id/add
+                        element: <AddSession />
+                    }
+                ]
             }
         ]
     }

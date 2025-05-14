@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { NavLink, Outlet } from 'react-router-dom';
 import { Col, Image, Row } from 'react-bootstrap';
+import { useParams } from 'react-router-dom';
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faTimesCircle } from "@fortawesome/free-regular-svg-icons";
@@ -8,8 +10,10 @@ import { ErrorAlert, FormattedDate, LoadingSpinner } from "shared/components";
 
 import { getWorkshopById } from '../../../services/workshops';
 
+import "./WorkshopDetails.scss";
+
 const WorkshopDetails = () => {
-    const id = 1;
+    const { id } = useParams();
 
     const [loading, setLoading] = useState(true);
     const [workshop, setWorkshop] = useState(null);
@@ -87,6 +91,30 @@ const WorkshopDetails = () => {
                     </Row>
                 </>
             )}
+
+            <div className="mt-5">
+                <NavLink
+                    to={"/workshops/" + id}
+                    end
+                    className={
+                        ({ isActive }) => "btn btn-primary btn-sm btn-child-link me-2 " + (isActive ? "btn-active" : "")
+                    }
+                >
+                    Sessions List
+                </NavLink>
+                <NavLink
+                    to={"/workshops/" + id + "/add"}
+                    className={
+                        ({ isActive }) => "btn btn-primary btn-sm btn-child-link" + (isActive ? "btn-active" : "")
+                    }
+                >
+                    Add a session
+                </NavLink>
+            </div>
+
+            <div className="my-4">
+                <Outlet />
+            </div>
         </div>
     );
 };
