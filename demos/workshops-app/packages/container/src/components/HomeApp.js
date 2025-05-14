@@ -8,9 +8,15 @@ const HomeApp = () => {
     // do this as soon as HomeApp component mount and the div is in the DOM
     useEffect(
         () => {
+            let unmount;
+
             if (ref.current) {
-                mount(ref.current);
+                const result = mount(ref.current);
+                unmount = result.unmount;
             }
+
+            // cleanup function is returned from the effect - therefore unmount function it will be called when HomApp unmounts
+            return unmount;
         },
         []
     );

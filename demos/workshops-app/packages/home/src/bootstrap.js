@@ -8,6 +8,12 @@ import App from './App';
 const mount = (el) => {
     const root = createRoot(el);
     root.render(<App />);
+
+    return {
+        unmount() {
+            root.unmount();
+        }
+    };
 }
 
 if (process.env.NODE_ENV === 'development') {

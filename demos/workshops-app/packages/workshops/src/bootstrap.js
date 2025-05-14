@@ -98,7 +98,9 @@ if (process.env.NODE_ENV === 'development') {
     if (rootElement) {
         console.log('workshops::bootstrap::Mounting Workshops App in isolation');
 
-        mount(rootElement, createBrowserRouter(routes));
+        mount(rootElement, {
+            defaultRouter: createBrowserRouter(routes)
+        });
     }
 }
 
