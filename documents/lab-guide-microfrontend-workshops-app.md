@@ -2418,10 +2418,10 @@ const Menu = () => {
 
 export default Menu;
 ```
-- Make sure to restart the home and container apps. You container app should work fine, and you should be able to toggle the theme.
+- Make sure to restart the shared, home and container apps. You container app should work fine, and you should be able to toggle the theme.
 
 ### Sharing global state using Redux Store
-- Install Redux libraries (RTK), and React Redux in all apps (some may not need one of them though)
+- Install Redux libraries - Redux Toolkit (RTK), and React Redux in all apps (some may not need one of them though)
 ```
 npm i @reduxjs/toolkit react-redux
 ```
@@ -2602,4 +2602,285 @@ const Home = () => {
 
 export default Home;
 ```
-- You should now be able to toggle theme, and the color of the Menu and Home component should change
+- Make sure to restart the shared app. You container app should work fine, and you should be able to toggle the theme.
+- __EXERCISE__: The changes to the home component in order to be able to make theme change now (when running in standalone mode) is left as an exercise.
+
+### Syncing state using props, arguments, and callback functions
+- The host MFE and remote MFE can communicate with each using through props, arguments, and callbacks
+    - When we render a remote MFE component, we can pass props, including callbacks props (functions)
+    - We can expose functions that need conditional logic (based on whether the code needs to be run in standalone mode or hosted mode), and pass arguments, including callback functions
+    - These arguments can help set up slightly different ways to execute code in standalone and hosted mode of execution (if needed)
+    - The arguments and callback functions (including returned values / callback functions) enable communication between host and remote MFEs
+    - We saw an example of this already when mounting a remote App framework-agnostically (here the browser router state of host, and memory router state of remote was synced)
+    ```js
+    const mountResult = mount(
+        ref.current,
+        {
+            initialPath: window.location.pathname,
+            onNavigate({ pathname, nextPathname, search }) {
+                console.log('container::WorkshopsApp::onNavigate', pathname, nextPathname, search);
+
+                if (pathname !== nextPathname || search !== '') {
+                    navigate({
+                        pathname: nextPathname,
+                        search
+                    });
+                }
+            }
+        }
+    );
+
+    onParentNavigateRef.current = mountResult.onParentNavigate;
+    ```
+    - __IMPORTANT__: We can use a similar strategy to wrap up conditional code in functions, and designing arguments, callback function (both in arguments and return value) to set up communication
+
+### Syncing state using custom events
+- The browser enables triggering __custom events__, and listening to them via its event handling APIs
+    - __Disadvantages__
+        - You may have to __duplicate state__ in this case in the communicating MFEs (and they may occur in multiple places in one MFE), and __set up syncing of the states carefully__ since there is no single source of truth in such case. Therefore this mechanism can work for simple shared state, but needs careful consideration when you have many events, or state duplicated in many places. If not carefully set up, the states can drift apart introducing bugs in the application.
+        - On the other hand, Context API and Redux enable shared state, but they also need React as the framework in communicating apps.
+    - __Advantages__
+        - It is simple to set up and understand - basically a pub-sub mechanism (the browser event handling APIs acting as an event bus)
+        - Works even if MFEs are not loaded in the same execution contexts (an MFE is mounted rather than its component rendered by host - eg. when MFEs are buiot with different frameworks, or one MFE is loaded within an iframe). On the other hand, when using Context API / Redux store, we are tied to React for example.
+        - There is loose-coupling, and we can communicate app-wide - any MFE to any other MFE without prior knowledge of who listens for the events. This advantage exists event when using Context API / Redux.
+        - This does not even require any set up at the top-level UI, nor complex set up for handling rendering of the app in standalone and hosted mode.
+- This is the [event handling API for working with custom events](https://developer.mozilla.org/en-US/docs/Web/Events/Creating_and_triggering_events) and it is [supported in all modern browsers](https://caniuse.com/?search=dispatchEvent)
+```js
+// App A
+window.dispatchEvent(new CustomEvent('themeChanged', { detail: 'dark' }));
+```
+```js
+// App B
+window.addEventListener('themeChanged', (e) => {
+  console.log('Theme:', e.detail);
+});
+```
+- Let us now implement theming with this mechanism. In the shared app's `src/events/theme.js`
+```js
+/**
+ * This is to be called by a component when it changes its internal theme state (or wants to effect a change in theme)
+ */
+const publishThemeChanged = (theme) => {
+    window.dispatchEvent(
+        new CustomEvent(
+            'themeChanged',
+            {
+                detail: {
+                    value: theme
+                }
+            }
+        )
+    );
+};
+
+/**
+ * This is to be called when the component mounts
+ * Returns the unsubscribe function which is to be called when the component unmounts
+ */
+const subscribeThemeChanged = (callback) => {
+    const handler = (event) => {
+        callback(event.detail.value);
+    };
+
+    window.addEventListener('themeChanged', handler);
+
+
+    return () => {
+        window.removeEventListener('themeChanged', handler);
+    };
+}
+
+const getContrastTheme = (theme = 'light') => {
+    return theme === 'dark' ? 'light' : 'dark';
+};
+
+export {
+    publishThemeChanged,
+    subscribeThemeChanged,
+    getContrastTheme
+};
+```
+- In `src/events/index.js` we gather exports from all files (right now we have only `theme.js`), and re-export.
+```js
+export * from './theme';
+```
+- In shared app's `webpack.dev.js` we expose these
+```js
+exposes: {
+    './components': './src/components/index.js',
+    './contexts': './src/contexts/index.js',
+    './features/themeSlice': './src/store/features/themeSlice.js',
+    './store': './src/store/index.js',
+    './events': './src/events/index.js',
+},
+```
+- In the container app's, `src/components/Menu/Menu.js`
+```js
+import { useState, useEffect } from 'react';
+import { NavLink } from 'react-router-dom';
+import Container from 'react-bootstrap/Container';
+import Nav from 'react-bootstrap/Nav';
+import Navbar from 'react-bootstrap/Navbar';
+import NavDropdown from 'react-bootstrap/NavDropdown';
+
+import { publishThemeChanged, subscribeThemeChanged, getContrastTheme } from 'shared/events';
+
+import './Menu.scss';
+
+const Menu = () => {
+    const [theme, setTheme] = useState('light');
+    const contrastTheme = getContrastTheme(theme);
+
+    const toggleTheme = () => {
+        const newTheme = getContrastTheme(theme);
+        console.log('Theme about to be changed to', newTheme);
+        setTheme(newTheme);
+        publishThemeChanged(newTheme);
+    };
+
+    useEffect(
+        () => {
+            const unsubscribe = subscribeThemeChanged(setTheme);
+
+            return unsubscribe;
+        },
+        []
+    );
+
+    return (
+        <Navbar collapseOnSelect expand="lg" variant={theme} className={`bg-${theme}`}>
+            <Container>
+                <Navbar.Brand as={NavLink} to="/">Workshops App</Navbar.Brand>
+
+                <Navbar.Toggle aria-controls="responsive-navbar-nav" />
+
+                <Navbar.Collapse id="responsive-navbar-nav">
+                    <Nav className="me-auto">
+                        <Nav.Link as={NavLink} to="/" end>Home</Nav.Link>
+                        <Nav.Link as={NavLink} to="/workshops" end>List of workshops</Nav.Link>
+                    </Nav>
+                    <NavDropdown title="Personalize" id="basic-nav-dropdown" className={`text-${contrastTheme}`}>
+                        <NavDropdown.Item as={NavLink} to="/workshops/favorites">
+                            Favorites
+                        </NavDropdown.Item>
+                        <NavDropdown.Item href="#" onClick={toggleTheme}>
+                            Change Theme
+                        </NavDropdown.Item>
+                    </NavDropdown>
+                </Navbar.Collapse>
+            </Container>
+        </Navbar>
+    );
+};
+
+export default Menu;
+```
+- In home app's `src/components/Home/Home.js`
+```jsx
+import { useState, useEffect } from 'react';
+
+import { subscribeThemeChanged, getContrastTheme } from 'shared/events';
+
+// import './Home.scss';
+import styles from './Home.module.scss';
+
+const Home = () => {
+    const [theme, setTheme] = useState('light');
+    const contrastTheme = getContrastTheme(theme);
+
+    useEffect(
+        () => {
+            const unsubscribe = subscribeThemeChanged((theme) => {
+                console.log('Theme changed to', theme);
+                setTheme(theme);
+            });
+
+            return unsubscribe;
+        },
+        []
+    );
+
+    return (
+        <div className={`home p-5 bg-${theme} text-${contrastTheme}`}>
+            <h1 className={styles.heading}>Workshops App</h1>
+
+            <hr />
+
+            <section>
+                <p>Welcome to Workshops App</p>
+                <p>
+                    The app serves details of (fictitious) technical workshops happening in
+                    various cities. Every workshop has a broad topic (eg. JavaScript), and a
+                    workshop has many sessions (each session covers a sub-topic, eg. Closures in
+                    JavaScript).
+                </p>
+                <p>
+                    You can view a list of workshops, details of every workshop, add a workshop,
+                    view the list of sessions in a workshop, and also add a new session for a
+                    workshop.
+                </p>
+            </section>
+        </div>
+    );
+}
+
+export default Home;
+```
+- __NOTE__: You can remove the context provider / Redux store provider set up in container and home apps. These are not used in this step. This is left to you.
+- Make sure to restart the shared app. You container app should work fine, and you should be able to toggle the theme.
+- __EXERCISE__: The changes to the home component in order to be able to make theme change now (when running in standalone mode) is left as an exercise.
+
+### Syncing state using custom events handled using a custom event bus
+- We just used the browser's event handling APIs as an event bus to effect communication between MFEs. As we saw, the support for this API is very good. However, if you prefer an independent event bus, you could use third-party libraries, or come up with your own implementatin would would be on similar lines
+```js
+const listeners = new Map();
+
+export const publish = (event, data) => {
+    listeners.get(event)?.forEach(fn => fn(data));
+};
+
+export const subscribe = (event, callback) => {
+    if (!listeners.has(event)) listeners.set(event, []);
+    listeners.get(event).push(callback);
+
+    return () => {
+        listeners.set(event, listeners.get(event).filter(fn => fn !== callback));
+    };
+};
+```
+- __EXERCISE__: An implementation using this is left as an exercise.
+
+### Syncing state using browser's local storage
+- You can use local storage to store the shared state. You can subscribe to the `localstorage` related event (`storage` fired on the `window` object) to get notified of the state changes.
+```js
+localStorage.setItem('theme', 'dark');
+```
+```js
+// for subscribers - please also need to handle remove of the listener (unsubscribing)
+window.addEventListener('storage', (event) => {
+    if (event.key === 'theme') {
+        document.body.setAttribute('data-theme', event.newValue);
+    }
+});
+```
+- __WARNING__: The window `storage` event does not fire in the tab from where the change happens! So you need to handle it specially, for example by triggering a cutom event.
+```js
+const setTheme = (value) => {
+    localStorage.setItem('theme', value);
+    window.dispatchEvent(new CustomEvent('localstorage-theme', { detail: value }));
+};
+
+window.addEventListener('localstorage-theme', (e) => {
+    console.log('Theme updated in this tab:', e.detail);
+});
+```
+- This is defintely an option to consider in MFEs and is left for your exploration. The good part if the state is not duplicated and acts as a single source of truth. Be mindful of application security in such cases.
+
+### Communication via backend APIs
+- You can avoid all forms of frontend communication if that is possible, and update the UI by simply using backend APIs (eg. RESTful API), or web sockets (recommended for real-time apps).
+- Where possible, it is best to stick to this in MFEs
+    - Simple to implement and use
+    - No business of syncing state
+    - Backend data is single source of truth
+    - Not prone to bugs
+    - Highly recommended, especially when the communicating MFEs are on different pages, and you need to navigate from one page to the next (and you thus fetch fresh data on the MFE page you navigate to).
