@@ -24,7 +24,8 @@ const devConfig = {
                 shared: 'shared@http://localhost:3003/remoteEntry.js',
             },
             exposes: {
-                './HomeApp': './src/bootstrap.js'
+                './HomeApp': './src/bootstrap.js',
+                './HomeAppComponent': './src/App',
             },
             // NOTE: Share third-party modules between MFEs when possible
             shared: {

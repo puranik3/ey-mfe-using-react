@@ -22,7 +22,8 @@ const devConfig = {
             // home: blahblah -> home (LHS) here is the name we assign within container in order to refer to the remote MFE -> this will be used when we import anything from home MFE (eg. import { mount from 'home/HomeApp')
             remotes: {
                 home: 'home@http://localhost:3001/remoteEntry.js',
-                workshops: 'workshops@http://localhost:3002/remoteEntry.js'
+                workshops: 'workshops@http://localhost:3002/remoteEntry.js',
+                shared: 'shared@http://localhost:3003/remoteEntry.js'
             },
             shared: {
                 ...packageJson.dependencies,

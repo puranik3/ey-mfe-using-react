@@ -1,7 +1,9 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
+import { ThemeProvider } from 'shared/contexts';
+
 import Layout from './Layout';
-import HomeApp from './components/HomeApp';
+import HomeAppComponent from 'home/HomeAppComponent';
 import WorkshopsApp from './components/WorkshopsApp';
 
 const routes = [
@@ -11,7 +13,8 @@ const routes = [
         children: [
             {
                 index: true,
-                element: <HomeApp />
+                // element: <HomeApp /> // this is the framework-agnostic way of mounting the home MFE
+                element: <HomeAppComponent /> // this is the react way of mounting the home MFE
             },
             {
                 path: 'workshops/*',
@@ -27,7 +30,9 @@ const router = createBrowserRouter(
 
 const App = () => {
     return (
-        <RouterProvider router={router} />
+        <ThemeProvider>
+            <RouterProvider router={router} />
+        </ThemeProvider>
     );
 };
 

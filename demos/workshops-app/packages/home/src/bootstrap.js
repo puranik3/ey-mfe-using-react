@@ -2,7 +2,7 @@ import { createRoot } from 'react-dom/client';
 
 import 'bootstrap/dist/css/bootstrap.css';
 
-import { ThemeProvider } from 'shared/contexts';
+import { ThemeProvider } from 'shared/contexts'
 import App from './App';
 import ThemeToggler from './components/ThemeToggler/ThemeToggler';
 
@@ -11,6 +11,7 @@ const mount = (rootElement, { mode = 'hosted' } = {}) => {
     const root = createRoot(rootElement);
 
     let el;
+
     if (mode === 'standalone') {
         el = (
             <ThemeProvider>

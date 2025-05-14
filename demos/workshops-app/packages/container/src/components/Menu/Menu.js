@@ -4,11 +4,15 @@ import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 
+import { useTheme } from 'shared/contexts';
+
 // import './Menu.scss';
 
 const Menu = () => {
+    const { toggleTheme, theme, contrastTheme } = useTheme();
+
     return (
-        <Navbar collapseOnSelect expand="lg" className="bg-light text-dark">
+        <Navbar collapseOnSelect expand="lg" variant={theme} className={`bg-${theme} text-${contrastTheme}`}>
             <Container>
                 <Navbar.Brand as={NavLink} to="/">Workshops App</Navbar.Brand>
 
@@ -24,7 +28,7 @@ const Menu = () => {
                         <NavDropdown.Item as={NavLink} to="/workshops/favorites">
                             Favorites
                         </NavDropdown.Item>
-                        <NavDropdown.Item href="#">
+                        <NavDropdown.Item href="#" onClick={toggleTheme}>
                             Change Theme
                         </NavDropdown.Item>
                     </NavDropdown>
