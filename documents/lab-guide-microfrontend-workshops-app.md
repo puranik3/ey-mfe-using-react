@@ -2473,6 +2473,118 @@ exposes: {
 },
 ```
 - Make sure shared app is a configured remote in home and shell container apps
+- In home app's `src/components/Home/Home.js` we set up to consume the theme state from the store
+```jsx
+// import './Home.scss';
+import { useSelector } from 'react-redux';
+
+import { selectTheme } from 'shared/features/themeSlice';
+
+import styles from './Home.module.scss';
+
+const Home = () => {
+    const { value, contrastValue } = useSelector(selectTheme)
+
+    return (
+        <div className={`home p-5 bg-${value} text-${contrastValue}`}>
+            <h1 className={styles.heading}>Workshops App</h1>
+
+            <hr />
+
+            <section>
+                <p>Welcome to Workshops App</p>
+                <p>
+                    The app serves details of (fictitious) technical workshops happening in
+                    various cities. Every workshop has a broad topic (eg. JavaScript), and a
+                    workshop has many sessions (each session covers a sub-topic, eg. Closures in
+                    JavaScript).
+                </p>
+                <p>
+                    You can view a list of workshops, details of every workshop, add a workshop,
+                    view the list of sessions in a workshop, and also add a new session for a
+                    workshop.
+                </p>
+            </section>
+        </div>
+    );
+}
+
+export default Home;
+```
+- Make changes to the `ThemeToggler` component for testing if the Home component renders with the correct theme, and reacts to theme changes. In `src/components/ThemeToggler/ThemeToggler.js`. Note that we have set up to __show this component in only standalone mode__.
+```jsx
+import { Button } from "react-bootstrap";
+import { useDispatch } from 'react-redux';
+
+import { toggleTheme } from 'shared/features/themeSlice';
+
+const ThemeToggler = () => {
+    const dispatch = useDispatch();
+
+    return (
+        <Button
+            variant="outline-primary"
+            onClick={() => dispatch(toggleTheme())}
+        >
+            Toggle theme
+        </Button>
+    );
+};
+
+export default ThemeToggler;
+```
+- The theme store will be provided by the shell container app. But we still need a store provider when it is run in standalone mode. So we make the following changes in home app's `bootstrap.js`. We essentialy have included a mode passed as an options argument to `mount()`. We use this to decide whether to render the home app with a `react-redux` `Provider` (standalone), or not (when hosted in the shell container app).
+```jsx
+import { createRoot } from 'react-dom/client';
+import { Provider } from 'react-redux';
+
+import store from 'shared/store';
+
+import 'bootstrap/dist/css/bootstrap.css';
+
+import App from './App';
+import ThemeToggler from './components/ThemeToggler/ThemeToggler';
+
+// We shall call this from here, as well as host MFE (say, container) - rootElement can be different from what's here in the host MFE (say, container)
+const mount = (rootElement, { mode = 'hosted' } = {}) => {
+    const root = createRoot(rootElement);
+
+    let el;
+
+    if (mode === 'standalone') {
+        el = (
+            <Provider store={store}>
+                <ThemeToggler />
+                <App />
+            </Provider>
+        );
+    } else {
+        el = <App />
+    }
+
+    root.render(el);
+
+    return {
+        unmount() {
+            root.unmount();
+        }
+    };
+}
+
+if (process.env.NODE_ENV === 'development') {
+    const rootElement = document.getElementById('root-home');
+
+    // if mount() is called by host MFE (say, container), rootElement will be null
+    // when home is run standalone, rootElement is NOT null and it mounts fine still
+    if (rootElement) {
+        mount(rootElement, { mode: 'standalone' });
+    }
+}
+
+// export it, so that we can call mount() in host MFEs (say, container)
+export { mount }
+```
+- Start the home app in standalone mode, and verify it works fine. You should be able to toggle the theme.
 - Provide the Redux store in container app's `App.js` (we have replaced the Context API related code - you may save a copy of it in another file for reference)
 ```jsx
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
