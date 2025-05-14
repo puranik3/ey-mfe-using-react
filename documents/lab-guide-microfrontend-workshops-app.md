@@ -891,7 +891,7 @@ exposes: {
     './components': './src/components/index.js',
 },
 ```
-- Enable use of shared components in the wotkshops app. In workshops app `config/webpack.dev.js` add __shared__ as a remote
+- Enable use of shared components in the workshops app. In workshops app `config/webpack.dev.js` add __shared__ as a remote
 ```js
 plugins: [
     // Add this
@@ -2328,6 +2328,7 @@ exposes: {
 - Add shared app as remote in shell container app's `webpack.dev.js`
 ```js
 remotes: {
+    // existing remotes...
     shared: 'shared@http://localhost:3003/remoteEntry.js',
 },
 ```
@@ -2996,3 +2997,879 @@ window.addEventListener('localstorage-theme', (e) => {
     - Backend data is single source of truth
     - Not prone to bugs
     - Highly recommended, especially when the communicating MFEs are on different pages, and you need to navigate from one page to the next (and you thus fetch fresh data on the MFE page you navigate to).
+
+## Step 25: Working with an MFE using a different framework
+- Create a new folder for favorites app in `packages/favorites`
+- From packages folder
+```sh
+mkdir favorites
+```
+```sh
+cd favorites
+```
+- Create a `package.json`
+```sh
+npm init -y
+```
+- Install the dependencies
+```sh
+npm i -D @babel/core @babel/plugin-transform-runtime @babel/preset-env @vue/compiler-sfc babel-loader css-loader file-loader html-webpack-plugin sass sass-loader style-loader vue-loader vue-style-loader webpack webpack-cli webpack-dev-server webpack-merge
+```
+```sh
+npm i vue bootstrap
+```
+- In `config/webpack.common.js`
+```js
+const { VueLoaderPlugin } = require('vue-loader');
+
+module.exports = {
+  entry: './src/index.js',
+  output: {
+    filename: '[name].[contenthash].js',
+  },
+  resolve: {
+    extensions: ['.js', '.vue'],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(png|jpe?g|gif|woff|svg|eot|ttf)$/i,
+        use: [{ loader: 'file-loader' }],
+      },
+      {
+        test: /\.vue$/,
+        use: 'vue-loader',
+      },
+      {
+        test: /\.scss$/,
+        oneOf: [
+          // this matches <style module lang="scss">
+          {
+            resourceQuery: /module/,
+            use: [
+              'vue-style-loader',
+              {
+                loader: 'css-loader',
+                options: {
+                  modules: true,
+                  esModule: false
+                }
+              },
+              'sass-loader'
+            ]
+          },
+          // this matches plain <style lang="scss"> or SCSS imported in JS
+          {
+            use: [
+              'vue-style-loader',
+              {
+                loader: 'css-loader',
+                options: {
+                  esModule: false
+                }
+              },
+              'sass-loader'
+            ]
+          }
+        ]
+      }
+    ],
+  },
+  plugins: [new VueLoaderPlugin()],
+};
+```
+- In `config/webpack.dev.js`
+```js
+const { merge } = require('webpack-merge');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const commonConfig = require('./webpack.common');
+const packageJson = require('../package.json');
+
+const devConfig = {
+  mode: 'development',
+  output: {
+    publicPath: 'http://localhost:3004/',
+  },
+  devServer: {
+    port: 3004,
+    historyApiFallback: {
+      index: 'index.html',
+    },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
+  },
+  plugins: [
+    new ModuleFederationPlugin({
+      name: 'favorites',
+      filename: 'remoteEntry.js',
+      shared: packageJson.dependencies,
+    }),
+    new HtmlWebpackPlugin({
+      template: './public/index.html',
+    }),
+  ],
+};
+
+module.exports = merge(commonConfig, devConfig);
+```
+- In `config/webpack.prod.js`
+```js
+const { merge } = require('webpack-merge');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const packageJson = require('../package.json');
+const commonConfig = require('./webpack.common');
+
+const prodConfig = {
+  mode: 'production',
+  output: {
+    filename: '[name].[contenthash].js',
+    publicPath: '/favorites/latest/',
+  },
+  plugins: [
+    new ModuleFederationPlugin({
+      name: 'favorites',
+      filename: 'remoteEntry.js',
+      shared: packageJson.dependencies,
+    }),
+  ],
+};
+
+module.exports = merge(commonConfig, prodConfig);
+```
+- In `public/index.html`
+```html
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Favorites</title>
+    </head>
+    <body>
+        <div id="root-favorites"></div>
+    </body>
+</html>
+```
+- In `src/index.js`
+```js
+import('./bootstrap');
+```
+- In `src/bootstrap.js`
+```js
+import { createApp } from 'vue';
+import Favorites from './components/Favorites.vue';
+
+// Mount function to start up the app
+const mount = (el, { mode = 'hosted' } = {}) => {
+  const app = createApp(Favorites);
+  app.mount(el);
+
+  return {
+    unmount() {
+      app.unmount();
+    }
+  };
+};
+
+if (process.env.NODE_ENV === 'development') {
+  const rootElement = document.getElementById('root-favorites');
+
+  if (rootElement) {
+    mount(rootElement, { mode: 'standalone' });
+  }
+}
+
+export { mount };
+```
+- In `src/components/Favorites.vue`. This is a file having HTML template, CSS style, and JS style in one file - The extension is `.vue` and Vue calls such files Single File Components (SFC).
+```vue
+<template>
+    <div>
+        <h1>Favorites</h1>
+        <hr />
+        {{ message }}
+    </div>
+</template>
+
+<script>
+export default {
+    name: "Favorites",
+    data() {
+        return {
+            message: "Your favorite workshops will be displayed here.",
+        };
+    },
+};
+</script>
+
+<style lang="scss" scoped>
+h1 {
+    color: olive;
+}
+</style>
+```
+- In favorites app `package.json` add these scripts
+```json
+"scripts": {
+    "start": "webpack serve --config config/webpack.dev.js",
+    "build": "webpack --config config/webpack.prod.js"
+},
+```
+- Start the favorites app in standalone mode
+```
+npm start
+```
+- You should be able to see the favorites component when the app loads
+- Now expose the `src/bootstrap.js` file in `webpack.dev.js` and `webpack.prod.js`
+```js
+new ModuleFederationPlugin({
+      name: 'favorites',
+      filename: 'remoteEntry.js',
+      exposes: {
+        './FavoritesApp': './src/bootstrap',
+      },
+      shared: packageJson.dependencies,
+}),
+```
+- Add favorites app as a remote in shell container app's `config/webpack.dev.js`
+```js
+remotes: {
+    // existing remotes...
+    favorites: 'favorites@http://localhost:3004/remoteEntry.js',
+},
+```
+- Define `FavoritesApp` in container app's `src/components/FavoritesApp.js`
+```js
+import { mount } from 'favorites/FavoritesApp';
+import { useRef, useEffect } from 'react';
+
+export default () => {
+    const ref = useRef(null);
+
+    useEffect(
+        () => {
+            const mountResult = mount(ref.current);
+
+            const unmount = mountResult.unmount;
+
+            return () => {
+                console.log('container::FavoritesApp::useEffect unmounting');
+                unmount();
+            };
+        },
+        []
+    );
+
+    return <div ref={ref}></div>;
+};
+```
+- In container app's `src/App.js`
+```js
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { Provider } from 'react-redux';
+
+import store from 'shared/store';
+
+import Layout from './Layout';
+
+// import HomeApp from './components/HomeApp';
+import HomeAppComponent from 'home/HomeAppComponent';
+import WorkshopsApp from './components/WorkshopsApp';
+import FavoritesApp from './components/FavoritesApp';
+
+const routes = [
+    {
+        path: '/',
+        element: <Layout />,
+        children: [
+            {
+                index: true,
+                // element: <HomeApp /> // this is the framework-agnostic way of mounting the home MFE
+                element: <HomeAppComponent /> // this is the react way of mounting the home MFE
+            },
+            {
+                path: 'workshops/*',
+                element: <WorkshopsApp />
+            },
+            {
+                path: 'favorites',
+                element: <FavoritesApp />
+            }
+        ]
+    }
+];
+
+const router = createBrowserRouter(
+    routes
+);
+
+const App = () => {
+    return (
+        <Provider store={store}>
+            <RouterProvider router={router} />
+        </Provider>
+    );
+};
+
+export default App;
+```
+
+- Make sure restart the favorites and container apps. You should be able to navigate to the favorites page in the container app, and see it.
+
+## Step 26: Deploying the app in production
+
+### Set up production webpack configurations for all apps
+- In container app's `config/webpack.prod.js`
+```js
+const { merge } = require('webpack-merge');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const commonConfig = require('./webpack.common');
+const packageJson = require('../package.json');
+
+const domain = process.env.PRODUCTION_DOMAIN;
+
+const prodConfig = {
+    mode: 'production',
+    output: {
+        filename: '[name].[contenthash].js',
+        publicPath: '/container/latest/',
+    },
+    plugins: [
+        new ModuleFederationPlugin({
+            name: 'container',
+            remotes: {
+                home: `home@${domain}/home/latest/remoteEntry.js`,
+                shared: `shared@${domain}/shared/latest/remoteEntry.js`,
+                workshops: `workshops@${domain}/workshops/latest/remoteEntry.js`,
+                favorites: `favorites@${domain}/favorites/latest/remoteEntry.js`,
+            },
+            shared: {
+                ...packageJson.dependencies,
+                'css-loader': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['css-loader'],
+                },
+                react: {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies.react,
+                },
+                'react-dom': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['react-dom'],
+                },
+                'react-router-dom': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['react-router-dom'], // or whatever version you're using
+                },
+            }
+        }),
+    ],
+};
+
+module.exports = merge(commonConfig, prodConfig);
+```
+- Set up build script in container app's `package.json`
+```
+"build": "webpack --config config/webpack.prod.js"
+```
+- Run build.
+```
+npm run build
+```
+- Check the `dist` folder is generated fine and delete it.
+- Setup home app's `config/webpack.prod.js`
+```js
+const { merge } = require('webpack-merge');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const packageJson = require('../package.json');
+const commonConfig = require('./webpack.common');
+
+const domain = process.env.PRODUCTION_DOMAIN;
+
+const prodConfig = {
+    mode: 'production',
+    output: {
+        filename: '[name].[contenthash].js',
+        publicPath: '/home/latest/',
+    },
+    plugins: [
+        new ModuleFederationPlugin({
+            name: 'home',
+            filename: 'remoteEntry.js',
+            exposes: {
+                './HomeApp': './src/bootstrap',
+                './HomeAppComponent': './src/App',
+            },
+            remotes: {
+                shared: `shared@${domain}/shared/latest/remoteEntry.js`,
+            },
+            // shared: packageJson.dependencies,
+            shared: {
+                ...packageJson.dependencies,
+                'css-loader': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['css-loader'],
+                },
+                react: {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies.react,
+                },
+                'react-dom': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['react-dom'],
+                },
+                'react-router-dom': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['react-router-dom'], // or whatever version you're using
+                },
+            }
+        }),
+    ],
+};
+
+module.exports = merge(commonConfig, prodConfig);
+```
+- Set up build script in home app's `package.json`
+```
+"build": "webpack --config config/webpack.prod.js"
+```
+- Run build.
+```
+npm run build
+```
+- Check the `dist` folder is generated fine and delete it.
+- Setup workshops app's `config/webpack.prod.js`. Do add the build script and check the build works fine, and delete the dist folder.
+```js
+const { merge } = require('webpack-merge');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const packageJson = require('../package.json');
+const commonConfig = require('./webpack.common');
+
+const domain = process.env.PRODUCTION_DOMAIN;
+
+const prodConfig = {
+    mode: 'production',
+    output: {
+        filename: '[name].[contenthash].js',
+        publicPath: '/workshops/latest/',
+    },
+    plugins: [
+        new ModuleFederationPlugin({
+            name: 'workshops',
+            filename: 'remoteEntry.js',
+            remotes: {
+                shared: `shared@${domain}/shared/latest/remoteEntry.js`,
+            },
+            exposes: {
+                './WorkshopsApp': './src/bootstrap',
+                './WorkshopsAppComponent': './src/App',
+            },
+            // shared: packageJson.dependencies,
+            shared: {
+                ...packageJson.dependencies,
+                'css-loader': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['css-loader'],
+                },
+                react: {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies.react,
+                },
+                'react-dom': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['react-dom'],
+                },
+                'react-router-dom': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['react-router-dom'], // or whatever version you're using
+                },
+            }
+        }),
+    ],
+};
+
+module.exports = merge(commonConfig, prodConfig);
+```
+- Setup shared app's `config/webpack.prod.js`. Do add the build script and check the build works fine, and delete the dist folder.
+```js
+const { merge } = require('webpack-merge');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const packageJson = require('../package.json');
+const commonConfig = require('./webpack.common');
+
+const prodConfig = {
+    mode: 'production',
+    output: {
+        filename: '[name].[contenthash].js',
+        publicPath: '/shared/latest/',
+    },
+    plugins: [
+        new ModuleFederationPlugin({
+            name: 'shared',
+            filename: 'remoteEntry.js',
+            exposes: {
+                './components': './src/components/index.js',
+                './contexts': './src/contexts/index.js',
+                './features/themeSlice': './src/store/features/themeSlice.js',
+                './store': './src/store/index.js',
+                './events': './src/events/index.js',
+            },
+            // shared: packageJson.dependencies,
+            shared: {
+                ...packageJson.dependencies,
+                'css-loader': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['css-loader'],
+                },
+                react: {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies.react,
+                },
+                'react-dom': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['react-dom'],
+                },
+                'react-router-dom': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['react-router-dom'], // or whatever version you're using
+                },
+            }
+        }),
+    ],
+};
+
+module.exports = merge(commonConfig, prodConfig);
+```
+- Setup favorites app's `config/webpack.prod.js`. Do add the build script and check the build works fine, and delete the dist folder.
+```js
+const { merge } = require('webpack-merge');
+const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
+const packageJson = require('../package.json');
+const commonConfig = require('./webpack.common');
+
+const prodConfig = {
+  mode: 'production',
+  output: {
+    filename: '[name].[contenthash].js',
+    publicPath: '/favorites/latest/',
+  },
+  plugins: [
+    new ModuleFederationPlugin({
+      name: 'favorites',
+      filename: 'remoteEntry.js',
+      exposes: {
+        './FavoritesApp': './src/bootstrap',
+      },
+      shared: packageJson.dependencies,
+    }),
+  ],
+};
+
+module.exports = merge(commonConfig, prodConfig);
+```
+
+### Create a GitHub repository
+- Login to github.com and create a new repository (can be public or private), say `workshops-app-mfe`
+- In `workshops-app` folder (i.e. the same level as `packages/` folder) create `.gitignore` for the repository
+```
+npx gitignore node
+```
+- Initialize the local `workshops-app` folder as a Git project, commit the changes, and add the GitHub repository as a remote. Again, from the `workshops-app` folder,
+```
+git init
+git add .
+git commit -m "initial commit"
+git remote add origin https://github.com/puranik3/workshops-app-mfe.git
+git branch -M master
+git push -u origin master
+```
+
+### Setting up the CI/CD pipeline using GitHub actions
+- Within `workshops-app` folder, create a `.github/workflows` folder
+```
+mkdir -p .github/workflows
+```
+- Create `.github/workflows/container.yml`. Add this in the file.
+```yml
+name: deploy-container
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/container/**'
+
+defaults:
+  run:
+    working-directory: packages/container
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm install
+      - run: npm run build
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+
+      - uses: shinyinc/action-aws-cli@v1.2
+      - run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/container/latest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+
+      - run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} --paths "/container/latest/index.html"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+- __NOTE__: The `PRODUCTION_DOMAIN` environment variable is used in the production webpack config files, and will also have to be set in the build environment in GitHub actions.
+
+- Create `.github/workflows/home.yml`. Add this in the file.
+```yml
+name: deploy-home
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/home/**'
+
+defaults:
+  run:
+    working-directory: packages/home
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm install
+      - run: npm run build
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+
+      - uses: shinyinc/action-aws-cli@v1.2
+      - run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/home/latest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+
+      - run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} --paths "/home/latest/remoteEntry.js"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+- Create `.github/workflows/workshops.yml`. Add this in the file.
+```yml
+name: deploy-workshops
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/workshops/**'
+
+defaults:
+  run:
+    working-directory: packages/workshops
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm install
+      - run: npm run build
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+
+      - uses: shinyinc/action-aws-cli@v1.2
+      - run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/workshops/latest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+
+      - run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} --paths "/workshops/latest/remoteEntry.js"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+- Create `.github/workflows/shared.yml`. Add this in the file.
+```yml
+name: deploy-shared
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/shared/**'
+
+defaults:
+  run:
+    working-directory: packages/shared
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm install
+      - run: npm run build
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+
+      - uses: shinyinc/action-aws-cli@v1.2
+      - run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/shared/latest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+
+      - run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} --paths "/shared/latest/remoteEntry.js"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+- Create `.github/workflows/favorites.yml`. Add this in the file.
+```yml
+name: deploy-favorites
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/favorites/**'
+
+defaults:
+  run:
+    working-directory: packages/favorites
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - run: npm install
+      - run: npm run build
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+
+      - uses: shinyinc/action-aws-cli@v1.2
+      - run: aws s3 sync dist s3://${{ secrets.AWS_S3_BUCKET_NAME }}/favorites/latest
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+
+      - run: aws cloudfront create-invalidation --distribution-id ${{ secrets.AWS_DISTRIBUTION_ID }} --paths "/favorites/latest/remoteEntry.js"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+
+### Setting up the AWS S3 bucket and policy
+__NOTE__: You need to have an AWS account or create one to proceed!
+- Login to AWS console and navigate to the AWS S3 dashboard
+- Create a bucket (say, `workshops-app-mfe` - note that bucket names have to be globally unique, so you would have to change this!)
+- Select and view the bucket. In properties, enable static website hosting (if not already done at bucket creation time)
+    - Set index document as `index.html` and save changes
+- Access the 'Permissions' tab of the chosen bucket.
+    - Uncheck Block public access and save changes
+- Create a policy - use policy generator 
+    - choose 'S3 Bucket Policy' as the type of policy
+    - Principal: '*'
+    - Configure the policy to allow 'GetObject' actions for all principals.
+    - Enter the correct Amazon Resource Name (ARN) for your S3 bucket in the policy. Add a `/*` at the end. Example: `arn:aws:s3:::workshops-app-mfe/*`
+    - Generate the policy and copy it. It will look like this
+```json
+{
+  "Id": "Policy1747234771579",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Stmt1747234764237",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::workshops-app-mfe/*",
+      "Principal": "*"
+    }
+  ]
+}
+```
+- Return to the S3 bucket and edit the policy in the 'Permissions' tab.
+- Paste the generated policy into the editor and save the changes.
+- Also setup __AWS_DEFAULT_REGION__ from a few steps earlier (in GitHub workflows files) - copy the AWS region of your S3 bucket (eg. `us-east-1`) - this was already setup, but if your region is different, do substitute it with the right one.
+    - For eg. set it in `container.yml` file
+```yml
+AWS_DEFAULT_REGION: us-east-1
+```
+    - Do similarly for other workflows files.
+
+### Setting up CloudFront distribution
+- Go to AWS Management Console and use the search bar to find CloudFront
+- Click Create distribution
+- Set Origin domain to your S3 bucket
+- Find the Default cache behavior section and change Viewer protocol policy to Redirect HTTP to HTTPS
+- Scroll down and click Create Distribution
+- After Distribution creation has finalized click the Distribution from the list, find its Settings and click - Edit
+- Scroll down to find the Default root object field and enter `/container/latest/index.html`
+- Click Save changes
+- Click Error pages
+- Click Create custom error response
+- Change HTTP error code to `403: Forbidden`
+- Change Customize error response to `Yes`
+- Set Response page path to `/container/latest/index.html`
+  - Set HTTP Response Code to `200: OK`
+
+### Create IAM user
+- Search for "IAM"
+- In the left sidebar, click Access Management -> Users
+- Click "Create user"
+- Enter any name you'd like in the __User Name__ field (eg. `github-actions-workshops-app-mfe`). Also AWS access type is Programmatic accesss / CLI access
+- Click "Next"
+- Click "Attach Policies Directly"
+- Use the search bar to find and tick __AmazonS3FullAccess__ and __CloudFrontFullAccess__
+- Click "Next"
+- Click "Create user"
+- Select the IAM user that was just created from the list of users
+- Click "Security Credentials"
+- Scroll down to find "Access Keys"
+- Click "Create access key"
+- Select "Command Line Interface (CLI)"
+- Scroll down and tick the "I understand..." check box and click "Next"
+- Copy and/or download the Access Key ID and Secret Access Key to use for deployment.
+    - say in `.env.prod` and add the filename to `.gitignore`
+
+### Copying secrets
+- In GitHub repo -> Settings -> Secrets and variables -> Repository secrets -> Add them (values from IAM, S3, CloudFront)
+    - Set 4 secrets
+        - __AWS_S3_BUCKET_NAME__: eg. `workshops-app-mfe`
+        - __AWS_ACCESS_KEY_ID__: The one stored in the .env.prod file
+        - __AWS_SECRET_ACCESS_KEY__: The one stored in the .env.prod file
+        - __AWS_DISTRIBUTION_ID__: eg. E25V22QT6CGA5
+- Re-run the build (GitHub actions -> re-run failing job). Or make a small change like updating the package.json version numbers, commit and push the changes.
+- Check CloudFront URL - eg. https://d264yehg9r033b.cloudfront.net. You should see the app up and running
+- In `webpack.prod.js` files setting up remotes, the production URL is needed
+    - Set the CloudFront distributin domain as a secret in GitHub
+    - `PRODUCTION_DOMAIN`: https://d264yehg9r033b.cloudfront.net
+- eg. https://d381c2ilh1p47i.cloudfront.net
+- Add, commit and push
