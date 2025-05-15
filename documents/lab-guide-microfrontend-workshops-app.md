@@ -3884,6 +3884,7 @@ __NOTES__:
 - About single-spa: https://single-spa.js.org/docs/getting-started-overview/
 - Using latest React and ReactDOM: https://single-spa.js.org/docs/ecosystem-react.html
 - More examples for further exploration: https://single-spa.js.org/docs/examples
+    - You may explore this example provided for React MFEs - https://github.com/react-microfrontends/people
 
 - This is one good application that is clear and concise. You can understand this to get started with single-spa with different frameworks (it uses React, Angular, Svelte, and vanilla JS). However it is built with single-spa 5.x and older versions of the UI frameworks as well (react, Angular etc.).
 __Video tutorial by Jack Herrington__: Uses single-spa v5 (All but one feature (app) is built, the video builds one missing feature)
