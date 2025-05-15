@@ -1,24 +1,17 @@
-const { merge } = require("webpack-merge");
-const commonConfig = require("./webpack.common");
+const { merge } = require('webpack-merge');
 const ModuleFederationPlugin = require('webpack/lib/container/ModuleFederationPlugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-
 const packageJson = require('../package.json');
+const commonConfig = require('./webpack.common');
 
-const devConfig = {
-    mode: "development",
+const prodConfig = {
+    mode: 'production',
     output: {
-        publicPath: "http://localhost:3003/",
-    },
-    devServer: {
-        port: 3003,
-        historyApiFallback: {
-            index: "/index.html",
-        },
+        filename: '[name].[contenthash].js',
+        publicPath: '/shared/latest/',
     },
     plugins: [
         new ModuleFederationPlugin({
-            name: 'shared', // unique name for the MFE
+            name: 'shared',
             filename: 'remoteEntry.js',
             exposes: {
                 './components': './src/components/index.js',
@@ -27,29 +20,28 @@ const devConfig = {
                 './store': './src/store/index.js',
                 './events': './src/events/index.js',
             },
-            // NOTE: Share third-party modules between MFEs when possible
+            // shared: packageJson.dependencies,
             shared: {
                 ...packageJson.dependencies,
+                'css-loader': {
+                    singleton: true,
+                    requiredVersion: packageJson.dependencies['css-loader'],
+                },
                 react: {
                     singleton: true,
-                    requiredVersion: '^19.1.0',
+                    requiredVersion: packageJson.dependencies.react,
                 },
                 'react-dom': {
                     singleton: true,
-                    requiredVersion: '^19.1.0',
+                    requiredVersion: packageJson.dependencies['react-dom'],
                 },
                 'react-router-dom': {
                     singleton: true,
-                    requiredVersion: '^7.6.0',
+                    requiredVersion: packageJson.dependencies['react-router-dom'], // or whatever version you're using
                 },
             }
         }),
-
-        // NOTE: we do not need index.html in production, as the home app is not independently deployed in production
-        new HtmlWebpackPlugin({
-            template: './public/index.html',
-        }),
-    ]
+    ],
 };
 
-module.exports = merge(commonConfig, devConfig);
+module.exports = merge(commonConfig, prodConfig);

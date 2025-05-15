@@ -23,7 +23,8 @@ const devConfig = {
             remotes: {
                 home: 'home@http://localhost:3001/remoteEntry.js',
                 workshops: 'workshops@http://localhost:3002/remoteEntry.js',
-                shared: 'shared@http://localhost:3003/remoteEntry.js'
+                shared: 'shared@http://localhost:3003/remoteEntry.js',
+                favorites: 'favorites@http://localhost:3004/remoteEntry.js'
             },
             shared: {
                 ...packageJson.dependencies,

@@ -1,10 +1,13 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
-import { ThemeProvider } from 'shared/contexts';
+import { Provider } from 'react-redux';
+
+import store from 'shared/store';
 
 import Layout from './Layout';
 import HomeAppComponent from 'home/HomeAppComponent';
 import WorkshopsApp from './components/WorkshopsApp';
+import FavoritesApp from './components/FavoritesApp';
 
 const routes = [
     {
@@ -19,6 +22,10 @@ const routes = [
             {
                 path: 'workshops/*',
                 element: <WorkshopsApp />
+            },
+            {
+                path: 'favorites',
+                element: <FavoritesApp />
             }
         ]
     }
@@ -30,9 +37,9 @@ const router = createBrowserRouter(
 
 const App = () => {
     return (
-        <ThemeProvider>
+        <Provider store={store}>
             <RouterProvider router={router} />
-        </ThemeProvider>
+        </Provider>
     );
 };
 

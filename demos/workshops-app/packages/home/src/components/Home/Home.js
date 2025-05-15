@@ -1,15 +1,30 @@
 // import './Home.scss';
-import { useSelector } from 'react-redux';
+// import { useSelector } from 'react-redux';
 
-import { selectTheme } from 'shared/features/themeSlice';
+// import { selectTheme } from 'shared/features/themeSlice';
+import { useState, useEffect } from 'react';
+import { subscribeThemeChanged, getContrastTheme } from 'shared/events'
 
-import styles from './Home.module.scss';
+
+import styles from './Home2.module.scss';
 
 const Home = () => {
-    const { value, contrastValue } = useSelector(selectTheme)
+    // const { value, contrastValue } = useSelector(selectTheme);
+    const [theme, setTheme] = useState('light');
+
+    const contrastTheme = getContrastTheme(theme);
+
+    useEffect(
+        () => {
+            const unsubscribe = subscribeThemeChanged(setTheme);
+
+            return unsubscribe;
+        },
+        []
+    );
 
     return (
-        <div className={`home p-5 bg-${value} text-${contrastValue}`}>
+        <div className={`home p-5 bg-${theme} text-${contrastTheme}`}>
             <h1 className={styles.heading}>Workshops App</h1>
 
             <hr />
