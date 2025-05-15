@@ -3880,3 +3880,19 @@ AWS_DEFAULT_REGION: us-east-1
     - `PRODUCTION_DOMAIN`: https://d264yehg9r033b.cloudfront.net
 - eg. https://d381c2ilh1p47i.cloudfront.net
 - Add, commit and push
+
+## Step 27: Single SPA framework for building MFEs
+Single SPA is a microfrontend framework for building MFEs, especially ones with different UI frameworks (one is built using Angular, another using React etc.)
+
+### Single SPA Resources
+__NOTES__:
+- There is no Getting started guide or tutorial for the latest version 6.x. Instead paid video courses are available. You can check them out if you have resources to purchase the course
+- The single-spa project does not seems to have received updates in a long time (check the [GitHub project repo](https://github.com/single-spa/single-spa)). Even the sample projects use quite old versions of react, Angular etc. Be mindful of this when considering to use the framework.
+- About single-spa: https://single-spa.js.org/docs/getting-started-overview/
+- Using latest React and ReactDOM: https://single-spa.js.org/docs/ecosystem-react.html
+- More examples for further exploration: https://single-spa.js.org/docs/examples
+
+- This is one good application that is clear and concise. You can understand this to get started with single-spa with different frameworks (it uses React, Angular, Svelte, and vanilla JS). However it is built with single-spa 5.x and older versions of the UI frameworks as well (react, Angular etc.).
+__Video tutorial by Jack Herrington__: Uses single-spa v5 (All but one feature (app) is built, the video builds one missing feature)
+- GitHub repository: https://github.com/jherr/wp5-and-single-spa/tree/master
+- Video tutorial on adding the feature: https://www.youtube.com/watch?v=wxnwPLLIJCY
